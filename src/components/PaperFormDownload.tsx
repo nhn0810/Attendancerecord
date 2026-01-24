@@ -73,7 +73,7 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                     link.href = dataUrl;
                     link.click();
                 } catch (err) {
-                    console.error(err);
+                    // console.error(err);
                     alert('이미지 생성 실패');
                 } finally {
                     setReadyToDownload(false);
@@ -171,10 +171,10 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                             <table>
                                 <tbody>
                                     <tr>
-                                        <th width="15%">기 도</th>
-                                        <th width="40%">말 씀 제 목</th>
-                                        <th width="30%">본 문</th>
-                                        <th width="15%">설 교 자</th>
+                                        <th style={{ width: '15%' }}>기 도</th>
+                                        <th style={{ width: '40%' }}>말 씀 제 목</th>
+                                        <th style={{ width: '30%' }}>본 문</th>
+                                        <th style={{ width: '15%' }}>설 교 자</th>
                                     </tr>
                                     <tr style={{ height: '45px' }}>
                                         <td>{logData.prayer}</td>
@@ -189,11 +189,11 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                             <table>
                                 <tbody>
                                     <tr>
-                                        <th width="8%">학 년</th>
-                                        <th width="10%">담 임</th>
-                                        <th width="7%">재적</th>
-                                        <th width="7%">현장<br />출석</th>
-                                        <th width="7%">온라인<br />출석</th>
+                                        <th style={{ width: '8%' }}>학 년</th>
+                                        <th style={{ width: '10%' }}>담 임</th>
+                                        <th style={{ width: '7%' }}>재적</th>
+                                        <th style={{ width: '7%' }}>현장<br />출석</th>
+                                        <th style={{ width: '7%' }}>온라인<br />출석</th>
                                         <th>명 단</th>
                                     </tr>
 
@@ -279,12 +279,12 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                             <table>
                                 <tbody>
                                     <tr>
-                                        <th width="10%"></th>
-                                        <th width="18%">주일헌금</th>
-                                        <th width="18%">십일조</th>
-                                        <th width="18%">감사헌금</th>
-                                        <th width="18%">헌금</th>
-                                        <th width="18%">합계</th>
+                                        <th style={{ width: '10%' }}></th>
+                                        <th style={{ width: '18%' }}>주일헌금</th>
+                                        <th style={{ width: '18%' }}>십일조</th>
+                                        <th style={{ width: '18%' }}>감사헌금</th>
+                                        <th style={{ width: '18%' }}>헌금</th>
+                                        <th style={{ width: '18%' }}>합계</th>
                                     </tr>
                                     <tr style={{ height: '35px' }}>
                                         <th>금액</th>
