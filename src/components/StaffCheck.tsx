@@ -9,6 +9,8 @@ interface StaffCheckProps {
     logId: string | null;
 }
 
+import { Trash2 } from 'lucide-react';
+
 export default function StaffCheck({ logId }: StaffCheckProps) {
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [presentMap, setPresentMap] = useState<Record<string, boolean>>({});
@@ -43,6 +45,8 @@ export default function StaffCheck({ logId }: StaffCheckProps) {
             alert('예배 정보를 먼저 저장해주세요.');
             return;
         }
+        if (isEditMode) return; // Prevent toggling in edit mode
+
         const isPresent = !!presentMap[teacherId];
 
         // Optimistic
@@ -65,6 +69,13 @@ export default function StaffCheck({ logId }: StaffCheckProps) {
         await supabase.from('teachers').insert({ name: newName, role: newRole });
         setNewName('');
         fetchTeachers();
+    };
+
+    const deleteStaff = async (id: string, name: string) => {
+        if (!confirm(`'${name}' 님을 명단에서 삭제하시겠습니까?`)) return;
+        const { error } = await supabase.from('teachers').delete().eq('id', id);
+        if (error) alert('삭제 실패: ' + error.message);
+        else fetchTeachers();
     };
 
     return (
@@ -92,13 +103,23 @@ export default function StaffCheck({ logId }: StaffCheckProps) {
                 <h3 className="font-bold text-md mb-2">청년교사</h3>
                 <div className="flex flex-wrap gap-2">
                     {teachers.filter(t => t.role === 'Teacher').map(t => (
-                        <button
-                            key={t.id}
-                            onClick={() => toggle(t.id)}
-                            className={`px-3 py-1 rounded-full border ${presentMap[t.id] ? 'bg-indigo-100 border-indigo-500 text-indigo-700 font-bold' : 'text-gray-500'}`}
-                        >
-                            {t.name}
-                        </button>
+                        <div key={t.id} className="relative group">
+                            <button
+                                onClick={() => toggle(t.id)}
+                                disabled={isEditMode}
+                                className={`px-3 py-1 rounded-full border ${presentMap[t.id] ? 'bg-indigo-100 border-indigo-500 text-indigo-700 font-bold' : 'text-gray-500'} ${isEditMode ? 'opacity-50 cursor-default' : ''}`}
+                            >
+                                {t.name}
+                            </button>
+                            {isEditMode && (
+                                <button
+                                    onClick={() => deleteStaff(t.id, t.name)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-5 h-5 flex items-center justify-center shadow-sm"
+                                >
+                                    <span className="text-xs">×</span>
+                                </button>
+                            )}
+                        </div>
                     ))}
                 </div>
             </div>
@@ -108,13 +129,23 @@ export default function StaffCheck({ logId }: StaffCheckProps) {
                 <h3 className="font-bold text-md mb-2">청년간사</h3>
                 <div className="flex flex-wrap gap-2">
                     {teachers.filter(t => t.role === 'Staff').map(t => (
-                        <button
-                            key={t.id}
-                            onClick={() => toggle(t.id)}
-                            className={`px-3 py-1 rounded-full border ${presentMap[t.id] ? 'bg-purple-100 border-purple-500 text-purple-700 font-bold' : 'text-gray-500'}`}
-                        >
-                            {t.name}
-                        </button>
+                        <div key={t.id} className="relative group">
+                            <button
+                                onClick={() => toggle(t.id)}
+                                disabled={isEditMode}
+                                className={`px-3 py-1 rounded-full border ${presentMap[t.id] ? 'bg-purple-100 border-purple-500 text-purple-700 font-bold' : 'text-gray-500'} ${isEditMode ? 'opacity-50 cursor-default' : ''}`}
+                            >
+                                {t.name}
+                            </button>
+                            {isEditMode && (
+                                <button
+                                    onClick={() => deleteStaff(t.id, t.name)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-5 h-5 flex items-center justify-center shadow-sm"
+                                >
+                                    <span className="text-xs">×</span>
+                                </button>
+                            )}
+                        </div>
                     ))}
                 </div>
             </div>
