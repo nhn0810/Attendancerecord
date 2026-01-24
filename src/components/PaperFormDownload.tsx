@@ -141,7 +141,6 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
         .section-title { font-weight: bold; margin-bottom: 5px; display: block; }
         .total-row { background-color: #f9f9f9; font-weight: bold; }
         .input-line { border-bottom: 1px solid #000; display: inline-block; min-width: 40px; text-align: center; padding: 0 5px; }
-        .circle-name { border: 1px solid #000; border-radius: 50%; padding: 2px 6px; margin: 2px; display: inline-block; font-size: 11px; }
     `;
 
     return (
@@ -207,8 +206,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                                 <td>{stats.total}</td>
                                                 <td>{stats.count}</td>
                                                 <td></td>
-                                                <td style={{ textAlign: 'left' }}>
-                                                    {stats.names.map(n => <span key={n} className="circle-name">{n}</span>)}
+                                                <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                                                    {stats.names.join(', ')}
                                                 </td>
                                             </tr>
                                         );
@@ -231,8 +230,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                                 <td>{stats.total}</td>
                                                 <td>{stats.count}</td>
                                                 <td></td>
-                                                <td style={{ textAlign: 'left' }}>
-                                                    {stats.names.map(n => <span key={n} className="circle-name">{n}</span>)}
+                                                <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                                                    {stats.names.join(', ')}
                                                 </td>
                                             </tr>
                                         );
@@ -251,8 +250,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                         <td>{newFriendStats.reg}</td>
                                         <td>{newFriendStats.att}</td>
                                         <td></td>
-                                        <td style={{ textAlign: 'left' }}>
-                                            {newFriendsClasses.map(c => getAttendingStudents(c.id).names.map(n => <span key={n} className="circle-name">{n}</span>))}
+                                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                                            {newFriendsClasses.map(c => getAttendingStudents(c.id).names.join(', ')).join(', ')}
                                         </td>
                                     </tr>
                                     <tr>
@@ -260,8 +259,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                         <td>{hgyStats.reg}</td>
                                         <td>{hgyStats.att}</td>
                                         <td></td>
-                                        <td style={{ textAlign: 'left' }}>
-                                            {hgyClasses.map(c => getAttendingStudents(c.id).names.map(n => <span key={n} className="circle-name">{n}</span>))}
+                                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                                            {hgyClasses.map(c => getAttendingStudents(c.id).names.join(', ')).join(', ')}
                                         </td>
                                     </tr>
 
@@ -309,8 +308,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                 <strong>4. 청년교사 : </strong> <span className="input-line">{teacherStaff.length}</span> 명 &nbsp;&nbsp;
                                 <strong>청년간사 : </strong> <span className="input-line">{staffStaff.length}</span> 명 &nbsp;&nbsp;
                                 <strong>합계 : </strong> <span className="input-line">{attendingTeachers.length}</span> 명<br />
-                                <strong>청년교사 : </strong> <span style={{ textDecoration: 'underline' }}>{teacherStaff.map(t => t.name).join(', ')}</span><br />
-                                <strong>청년간사 : </strong> <span style={{ textDecoration: 'underline' }}>{staffStaff.map(t => t.name).join(', ')}</span><br />
+                                <strong>청년교사 : </strong> <span>{teacherStaff.map(t => t.name).join(', ')}</span><br />
+                                <strong>청년간사 : </strong> <span>{staffStaff.map(t => t.name).join(', ')}</span><br />
                                 <strong>만나쿠폰 발급내역 : 1천원권 </strong> <span className="input-line">{Number(logData.coupons_per_person || 0) * Number(logData.coupon_recipient_count || 0)}</span> 개 ( <span className="input-line">{logData.coupon_recipient_count || 0}</span> 명 )
                             </div>
 
