@@ -1,0 +1,88 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/utils/supabase/client';
+import { WorshipLog } from '@/types/database';
+import Link from 'next/link';
+
+export default function HistoryPage() {
+    const [logs, setLogs] = useState<WorshipLog[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    const fetchLogs = async () => {
+        const { data } = await supabase
+            .from('worship_logs')
+            .select('*')
+            .order('date', { ascending: false });
+        setLogs(data || []);
+        setLoading(false);
+    };
+
+    const deleteLog = async (id: string) => {
+        if (!confirm('정말 이 기록을 삭제하시겠습니까? (복구 불가)')) return;
+        await supabase.from('worship_logs').delete().eq('id', id);
+        fetchLogs();
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-100 p-8">
+            <div className="max-w-5xl mx-auto bg-white rounded-lg shadow p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">📅 예배일지 기록 (History)</h1>
+                    <Link href="/" className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
+                        ← 메인으로 돌아가기
+                    </Link>
+                </div>
+
+                {loading ? (
+                    <p>Loading...</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 border-b-2 border-gray-200">
+                                    <th className="p-4 font-bold text-gray-700">날짜</th>
+                                    <th className="p-4 font-bold text-gray-700">말씀 제목</th>
+                                    <th className="p-4 font-bold text-gray-700">설교자</th>
+                                    <th className="p-4 font-bold text-gray-700">쿠폰 지급액</th>
+                                    <th className="p-4 font-bold text-gray-700 text-right">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {logs.map(log => (
+                                    <tr key={log.id} className="border-b hover:bg-gray-50 transition-colors text-black">
+                                        <td className="p-4 font-medium">{log.date}</td>
+                                        <td className="p-4">{log.sermon_title || '-'}</td>
+                                        <td className="p-4">{log.preacher || '-'}</td>
+                                        <td className="p-4 text-indigo-700 font-bold">
+                                            {((log.coupon_recipient_count || 0) * (log.coupons_per_person || 0) * 1000).toLocaleString()}원
+                                        </td>
+                                        <td className="p-4 text-right space-x-2">
+                                            {/* In a real app, Edit would link to Home with ?date=... params or similar */}
+                                            <button
+                                                onClick={() => deleteLog(log.id)}
+                                                className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 px-3 py-1 rounded"
+                                            >
+                                                삭제
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {logs.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="p-8 text-center text-gray-500">기록이 없습니다.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
