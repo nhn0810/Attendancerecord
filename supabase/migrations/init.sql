@@ -14,6 +14,7 @@ create table public.classes (
   grade text not null, -- 'Middle', 'High'
   name text not null,  -- '1반', '2반', '사랑반'
   teacher_id uuid references public.teachers(id) on delete set null,
+  teacher_name text, -- Direct input or synced name
   created_at timestamptz default now()
 );
 

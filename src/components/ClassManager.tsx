@@ -14,6 +14,7 @@ export default function ClassManager() {
     // Teacher Management
     const [teachers, setTeachers] = useState<{ id: string, name: string }[]>([]);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+    const [customTeacherName, setCustomTeacherName] = useState('');
 
     useEffect(() => {
         fetchTeachers();
@@ -41,7 +42,18 @@ export default function ClassManager() {
         if (!newClassName.trim()) return;
 
         const payload: any = { grade: selectedGrade, name: newClassName };
-        if (selectedTeacherId) payload.teacher_id = selectedTeacherId;
+
+        if (selectedTeacherId === 'manual') {
+            if (customTeacherName.trim()) {
+                payload.teacher_name = customTeacherName.trim();
+                payload.teacher_id = null;
+            }
+        } else if (selectedTeacherId) {
+            payload.teacher_id = selectedTeacherId;
+            // Also save name for redundancy or display preference
+            const t = teachers.find(t => t.id === selectedTeacherId);
+            if (t) payload.teacher_name = t.name;
+        }
 
         const { error } = await supabase
             .from('classes')
@@ -52,6 +64,7 @@ export default function ClassManager() {
         } else {
             setNewClassName('');
             setSelectedTeacherId('');
+            setCustomTeacherName('');
             fetchClasses();
         }
     };
@@ -91,9 +104,9 @@ export default function ClassManager() {
                     <div key={cls.id} className="border p-3 rounded flex justify-between items-center bg-gray-50">
                         <div>
                             <span className="font-bold text-gray-800 block">{cls.name}</span>
-                            {cls.teachers?.name && (
+                            {(cls.teacher_name || cls.teachers?.name) && (
                                 <span className="text-sm text-blue-600 font-medium tracking-tight">
-                                    (담임: {cls.teachers.name})
+                                    (담임: {cls.teacher_name || cls.teachers?.name})
                                 </span>
                             )}
                         </div>
@@ -116,16 +129,31 @@ export default function ClassManager() {
                     placeholder={`${selectedGrade === 'Middle' ? '중' : '고'} N반 이름`}
                     className="border p-2 rounded flex-1 text-black w-full"
                 />
-                <select
-                    value={selectedTeacherId}
-                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="border p-2 rounded text-black w-full md:w-auto"
-                >
-                    <option value="">담당교사 선택 (선택안함)</option>
-                    {teachers.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                </select>
+
+                <div className="flex gap-1 w-full md:w-auto">
+                    <select
+                        value={selectedTeacherId}
+                        onChange={(e) => setSelectedTeacherId(e.target.value)}
+                        className="border p-2 rounded text-black flex-1 md:w-32"
+                    >
+                        <option value="">담당교사 (선택안함)</option>
+                        {teachers.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                        <option value="manual">➕ 직접 입력</option>
+                    </select>
+
+                    {selectedTeacherId === 'manual' && (
+                        <input
+                            type="text"
+                            value={customTeacherName}
+                            onChange={(e) => setCustomTeacherName(e.target.value)}
+                            placeholder="이름 입력"
+                            className="border p-2 rounded text-black w-24"
+                        />
+                    )}
+                </div>
+
                 <button
                     onClick={addClass}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-1 w-full md:w-auto justify-center"

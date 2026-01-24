@@ -4,6 +4,7 @@ export interface Class {
     grade: 'Middle' | 'High';
     name: string;
     teacher_id?: string;
+    teacher_name?: string;
     teachers?: { name: string };
 }
 
