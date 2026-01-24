@@ -13,6 +13,7 @@ import StaffCheck from '@/components/StaffCheck';
 import CouponForm from '@/components/CouponForm';
 import ClassManager from '@/components/ClassManager';
 import RosterManager from '@/components/RosterManager';
+import PaperFormDownload from '@/components/PaperFormDownload';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'attendance' | 'admin'>('attendance');
@@ -148,9 +149,9 @@ export default function Home() {
               onUpdate={() => fetchLogByDate(selectedDate)}
             />
 
-            {/* Note: Export function needs refactoring but keeping button logic simple for MVP */}
-            <div className="text-center text-gray-500 text-sm mt-8 pb-8">
-              * 이미지 다운로드는 상단 '예배 정보 입력' 완료 후 가능합니다.
+            {/* Image Download */}
+            <div className="mt-8 mb-8">
+              <PaperFormDownload logId={logData?.id || null} />
             </div>
           </div>
         )}
