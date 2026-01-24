@@ -18,15 +18,16 @@ const PRAYER_ROLES = ['형제', '자매', '회장', '부회장', '서기', '회�
 export default function WorshipInfoForm({ selectedDate, onDateChange, logData, onUpdate }: WorshipInfoFormProps) {
     const [loading, setLoading] = useState(false);
     const [personOptions, setPersonOptions] = useState<string[]>([]);
-    const [formData, setFormData] = useState({
-        prayer: '',
-        prayer_role: '형제',
-        sermon_title: '',
-        sermon_text: '',
-        preacher: '',
-        coupon_recipient_count: 0,
-        coupons_per_person: 0
-    });
+
+    // State Variables
+    const [preacher, setPreacher] = useState('');
+    const [prayer, setPrayer] = useState('');
+    const [prayerRole, setPrayerRole] = useState('형제');
+    const [customRole, setCustomRole] = useState('');
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+
+    const PREDEFINED_ROLES = ['형제', '자매', '회장', '부회장', '서기', '회계', '목사님', '선생님'];
 
     // Fetch Names for Autocomplete
     useEffect(() => {
@@ -45,54 +46,74 @@ export default function WorshipInfoForm({ selectedDate, onDateChange, logData, o
 
     useEffect(() => {
         if (logData) {
-            setFormData({
-                prayer: logData.prayer || '',
-                prayer_role: logData.prayer_role || '형제',
-                sermon_title: logData.sermon_title || '',
-                sermon_text: logData.sermon_text || '',
-                preacher: logData.preacher || '',
-                coupon_recipient_count: logData.coupon_recipient_count || 0,
-                coupons_per_person: logData.coupons_per_person || 0
-            });
+            setPreacher(logData.preacher || '');
+            setPrayer(logData.prayer || '');
+            setTitle(logData.sermon_title || '');
+            setContent(logData.sermon_text || '');
+
+            // Handle Role
+            if (logData.prayer_role) {
+                if (PREDEFINED_ROLES.includes(logData.prayer_role)) {
+                    setPrayerRole(logData.prayer_role);
+                    setCustomRole('');
+                } else {
+                    setPrayerRole('직접입력');
+                    setCustomRole(logData.prayer_role);
+                }
+            } else {
+                setPrayerRole('형제');
+                setCustomRole('');
+            }
         } else {
-            setFormData({
-                prayer: '',
-                prayer_role: '형제',
-                sermon_title: '',
-                sermon_text: '',
-                preacher: '',
-                coupon_recipient_count: 0,
-                coupons_per_person: 0
-            });
+            setPreacher('');
+            setPrayer('');
+            setPrayerRole('형제');
+            setCustomRole('');
+            setTitle('');
+            setContent('');
         }
     }, [logData]);
 
     const handleSave = async () => {
         setLoading(true);
         try {
+            if (!selectedDate) return alert('날짜를 선택해주세요.');
+
+            const finalRole = prayerRole === '직접입력' ? customRole : prayerRole;
+            if (!finalRole.trim()) return alert('기도자 직책을 입력해주세요.');
+
+            const logEntry = {
+                date: selectedDate,
+                preacher: preacher,
+                prayer: prayer,
+                prayer_role: finalRole,
+                sermon_title: title,
+                sermon_text: content,
+                coupon_recipient_count: logData?.coupon_recipient_count || 0, // Preserve existing coupon data if any
+                coupons_per_person: logData?.coupons_per_person || 0, // Preserve existing coupon data if any
+            };
+
             if (logData?.id) {
                 const { error } = await supabase
                     .from('worship_logs')
-                    .update(formData)
+                    .update(logEntry)
                     .eq('id', logData.id);
                 if (error) throw error;
             } else {
                 const { error } = await supabase
                     .from('worship_logs')
-                    .insert([{ date: selectedDate, ...formData }]);
+                    .insert([logEntry]);
                 if (error) throw error;
             }
             onUpdate();
             alert('저장되었습니다.');
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('저장 중 오류가 발생했습니다.');
+            alert('저장 중 오류가 발생했습니다: ' + e.message);
         } finally {
             setLoading(false);
         }
     };
-
-    const totalCouponAmount = formData.coupon_recipient_count * formData.coupons_per_person * 1000;
 
     return (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -114,22 +135,33 @@ export default function WorshipInfoForm({ selectedDate, onDateChange, logData, o
                 <div>
                     <label className="block text-sm font-bold text-gray-900">기도자</label>
                     <div className="flex gap-2">
-                        <SmartInput
-                            value={formData.prayer}
-                            onChange={(val) => setFormData(prev => ({ ...prev, prayer: val }))}
-                            options={personOptions}
-                            placeholder="이름 검색"
-                            className="flex-1"
-                        />
-                        <select
-                            value={formData.prayer_role}
-                            onChange={(e) => setFormData(prev => ({ ...prev, prayer_role: e.target.value }))}
-                            className="border rounded p-2 text-black w-24"
-                        >
-                            {PRAYER_ROLES.map(role => (
-                                <option key={role} value={role}>{role}</option>
-                            ))}
-                        </select>
+                        <div className="flex-none">
+                            <select
+                                value={prayerRole}
+                                onChange={(e) => setPrayerRole(e.target.value)}
+                                className="w-24 border rounded p-2 text-black bg-white"
+                            >
+                                {PREDEFINED_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                                <option value="직접입력">직접입력</option>
+                            </select>
+                        </div>
+                        {prayerRole === '직접입력' && (
+                            <input
+                                type="text"
+                                value={customRole}
+                                onChange={(e) => setCustomRole(e.target.value)}
+                                placeholder="직책 입력"
+                                className="w-24 border rounded p-2 text-black"
+                            />
+                        )}
+                        <div className="flex-1">
+                            <SmartInput
+                                value={prayer}
+                                onChange={setPrayer}
+                                options={personOptions}
+                                placeholder="이름 검색"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -137,8 +169,8 @@ export default function WorshipInfoForm({ selectedDate, onDateChange, logData, o
                 <div>
                     <label className="block text-sm font-bold text-gray-900">설교자</label>
                     <SmartInput
-                        value={formData.preacher}
-                        onChange={(val) => setFormData(prev => ({ ...prev, preacher: val }))}
+                        value={preacher}
+                        onChange={setPreacher}
                         options={['임희준 목사님', '김현민 전도사님']} // Default list logic
                         placeholder="직접 입력 또는 선택"
                         className="w-full"
@@ -149,8 +181,8 @@ export default function WorshipInfoForm({ selectedDate, onDateChange, logData, o
                     <label className="block text-sm font-bold text-gray-900">말씀 제목</label>
                     <input
                         type="text"
-                        value={formData.sermon_title}
-                        onChange={(e) => setFormData(prev => ({ ...prev, sermon_title: e.target.value }))}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 text-black"
                     />
                 </div>
@@ -158,8 +190,8 @@ export default function WorshipInfoForm({ selectedDate, onDateChange, logData, o
                     <label className="block text-sm font-bold text-gray-900">본문</label>
                     <input
                         type="text"
-                        value={formData.sermon_text}
-                        onChange={(e) => setFormData(prev => ({ ...prev, sermon_text: e.target.value }))}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm border p-2 text-black"
                         placeholder="예: 요한복음 3장 16절"
                     />
