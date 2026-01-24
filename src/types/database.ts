@@ -3,6 +3,8 @@ export interface Class {
     id: string;
     grade: 'Middle' | 'High';
     name: string;
+    teacher_id?: string;
+    teachers?: { name: string };
 }
 
 export interface Student {

@@ -11,14 +11,27 @@ export default function ClassManager() {
     const [newClassName, setNewClassName] = useState('');
     const [selectedGrade, setSelectedGrade] = useState<'Middle' | 'High'>('Middle');
 
+    // Teacher Management
+    const [teachers, setTeachers] = useState<{ id: string, name: string }[]>([]);
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+
+    useEffect(() => {
+        fetchTeachers();
+    }, []);
+
     useEffect(() => {
         fetchClasses();
     }, [selectedGrade]);
 
+    const fetchTeachers = async () => {
+        const { data } = await supabase.from('teachers').select('id, name').eq('is_active', true).order('name');
+        setTeachers(data || []);
+    };
+
     const fetchClasses = async () => {
         const { data } = await supabase
             .from('classes')
-            .select('*')
+            .select('*, teachers(name)')
             .eq('grade', selectedGrade)
             .order('name');
         setClasses(data || []);
@@ -26,14 +39,19 @@ export default function ClassManager() {
 
     const addClass = async () => {
         if (!newClassName.trim()) return;
+
+        const payload: any = { grade: selectedGrade, name: newClassName };
+        if (selectedTeacherId) payload.teacher_id = selectedTeacherId;
+
         const { error } = await supabase
             .from('classes')
-            .insert([{ grade: selectedGrade, name: newClassName }]);
+            .insert([payload]);
 
         if (error) {
             alert('반 추가 실패: ' + error.message);
         } else {
             setNewClassName('');
+            setSelectedTeacherId('');
             fetchClasses();
         }
     };
@@ -68,10 +86,17 @@ export default function ClassManager() {
             </div>
 
             {/* Class List */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 {classes.map(cls => (
                     <div key={cls.id} className="border p-3 rounded flex justify-between items-center bg-gray-50">
-                        <span className="font-bold text-gray-800">{cls.name}</span>
+                        <div>
+                            <span className="font-bold text-gray-800 block">{cls.name}</span>
+                            {cls.teachers?.name && (
+                                <span className="text-sm text-blue-600 font-medium tracking-tight">
+                                    (담임: {cls.teachers.name})
+                                </span>
+                            )}
+                        </div>
                         <button
                             onClick={() => deleteClass(cls.id)}
                             className="text-red-500 p-1 hover:bg-red-100 rounded"
@@ -83,18 +108,27 @@ export default function ClassManager() {
             </div>
 
             {/* Add Input */}
-            <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-2 items-end md:items-center">
                 <input
                     type="text"
                     value={newClassName}
                     onChange={e => setNewClassName(e.target.value)}
-                    placeholder={`${selectedGrade === 'Middle' ? '중' : '고'} N반 or 반이름`}
-                    className="border p-2 rounded flex-1 text-black"
-                    onKeyDown={e => e.key === 'Enter' && addClass()}
+                    placeholder={`${selectedGrade === 'Middle' ? '중' : '고'} N반 이름`}
+                    className="border p-2 rounded flex-1 text-black w-full"
                 />
+                <select
+                    value={selectedTeacherId}
+                    onChange={(e) => setSelectedTeacherId(e.target.value)}
+                    className="border p-2 rounded text-black w-full md:w-auto"
+                >
+                    <option value="">담당교사 선택 (선택안함)</option>
+                    {teachers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                </select>
                 <button
                     onClick={addClass}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-1"
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-1 w-full md:w-auto justify-center"
                 >
                     <Plus size={16} /> 추가
                 </button>

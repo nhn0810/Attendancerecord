@@ -27,7 +27,7 @@ export default function Home() {
   }, [activeTab]); // Refresh when switching tabs
 
   const fetchClasses = async () => {
-    const { data } = await supabase.from('classes').select('*').order('name');
+    const { data } = await supabase.from('classes').select('*, teachers(name)').order('name');
     setClasses(data || []);
   };
 
@@ -96,7 +96,7 @@ export default function Home() {
                 <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">중등부</h3>
                 <div className="space-y-2">
                   {middleClasses.map(cls => (
-                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} />
+                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teachers?.name} />
                   ))}
                   {middleClasses.length === 0 && <p className="text-gray-400">등록된 반이 없습니다. '반/명단 관리' 탭에서 반을 추가해주세요.</p>}
                 </div>
@@ -106,7 +106,7 @@ export default function Home() {
                 <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">고등부</h3>
                 <div className="space-y-2">
                   {highClasses.map(cls => (
-                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} />
+                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teachers?.name} />
                   ))}
                   {highClasses.length === 0 && <p className="text-gray-400">등록된 반이 없습니다.</p>}
                 </div>

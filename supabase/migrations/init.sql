@@ -13,6 +13,7 @@ create table public.classes (
   id uuid primary key default uuid_generate_v4(),
   grade text not null, -- 'Middle', 'High'
   name text not null,  -- '1반', '2반', '사랑반'
+  teacher_id uuid references public.teachers(id) on delete set null,
   created_at timestamptz default now()
 );
 

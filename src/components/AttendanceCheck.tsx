@@ -9,9 +9,10 @@ interface AttendanceCheckProps {
     logId: string | null;
     classId: string;
     classNameStr: string;
+    teacherName?: string;
 }
 
-export default function AttendanceCheck({ logId, classId, classNameStr }: AttendanceCheckProps) {
+export default function AttendanceCheck({ logId, classId, classNameStr, teacherName }: AttendanceCheckProps) {
     const [students, setStudents] = useState<Student[]>([]);
     const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
@@ -88,7 +89,9 @@ export default function AttendanceCheck({ logId, classId, classNameStr }: Attend
     return (
         <div className="border rounded p-4 mb-4 bg-white shadow-sm">
             <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-lg">{classNameStr}</h3>
+                <h3 className="font-bold text-lg">
+                    {classNameStr} {teacherName && <span className="text-sm font-normal text-blue-600">({teacherName})</span>}
+                </h3>
                 <div className="text-sm text-gray-600">
                     출석: <strong className="text-blue-600">{attendanceSet.size}</strong> / {students.length}
                 </div>
