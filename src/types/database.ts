@@ -38,7 +38,7 @@ export interface Attendance {
     id: string;
     log_id: string;
     student_id: string;
-    status: 'present';
+    status: 'present' | 'online';
 }
 
 export interface Offering {

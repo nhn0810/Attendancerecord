@@ -17,7 +17,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
     const [logData, setLogData] = useState<WorshipLog | null>(null);
     const [classes, setClasses] = useState<Class[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
-    const [attendance, setAttendance] = useState<{ log_id: string, student_id: string }[]>([]);
+    // Updated Attendance type local usage
+    const [attendance, setAttendance] = useState<{ log_id: string, student_id: string, status: 'present' | 'online' }[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [teacherAttendance, setTeacherAttendance] = useState<{ log_id: string, teacher_id: string }[]>([]);
     const [offerings, setOfferings] = useState<Offering[]>([]);
@@ -40,7 +41,7 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                 supabase.from('worship_logs').select('*').eq('id', logId).single(),
                 supabase.from('classes').select('*, teachers(name)').order('name'),
                 supabase.from('students').select('*').eq('is_active', true).order('name'),
-                supabase.from('attendance').select('log_id, student_id').eq('log_id', logId),
+                supabase.from('attendance').select('log_id, student_id, status').eq('log_id', logId),
                 supabase.from('teachers').select('*').eq('is_active', true),
                 supabase.from('teacher_attendance').select('log_id, teacher_id').eq('log_id', logId),
                 supabase.from('offerings').select('*').eq('log_id', logId)
@@ -49,7 +50,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
             setLogData(logRes.data);
             setClasses(classRes.data || []);
             setStudents(studentRes.data || []);
-            setAttendance(attRes.data || []);
+            // Cast or ensure type
+            setAttendance((attRes.data as any) || []);
             setTeachers(teacherRes.data || []);
             setTeacherAttendance(tAttRes.data || []);
             setOfferings(offeringRes.data || []);
@@ -73,7 +75,7 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                     link.href = dataUrl;
                     link.click();
                 } catch (err) {
-                    // console.error(err);
+                    console.error(err);
                     alert('이미지 생성 실패');
                 } finally {
                     setReadyToDownload(false);
@@ -90,8 +92,26 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
     // --- Helpers ---
     const getAttendingStudents = (classId: string) => {
         const classStudents = students.filter(s => s.class_id === classId);
-        const attending = classStudents.filter(s => attendance.some(a => a.student_id === s.id));
-        return { total: classStudents.length, count: attending.length, names: attending.map(s => s.name) };
+
+        // Filter attendance for this class
+        const classAtt = attendance.filter(a => classStudents.some(s => s.id === a.student_id));
+
+        const offlineCount = classAtt.filter(a => a.status === 'present').length;
+        const onlineCount = classAtt.filter(a => a.status === 'online').length;
+
+        // List names of ALL attendees (Offline + Online)
+        // Order by student name?
+        const attendingStudentIds = new Set(classAtt.map(a => a.student_id));
+        const attendingNames = classStudents
+            .filter(s => attendingStudentIds.has(s.id))
+            .map(s => s.name); // Maybe append (온) for online? User said "Just write names".
+
+        return {
+            total: classStudents.length,
+            offline: offlineCount,
+            online: onlineCount,
+            names: attendingNames
+        };
     };
 
     const middleClasses = classes.filter(c => c.grade === 'Middle');
@@ -99,9 +119,14 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
 
     // Subtotals
     const getSubtotal = (clsList: Class[]) => {
-        let reg = 0; let att = 0;
-        clsList.forEach(c => { const stats = getAttendingStudents(c.id); reg += stats.total; att += stats.count; });
-        return { reg, att };
+        let reg = 0; let off = 0; let on = 0;
+        clsList.forEach(c => {
+            const stats = getAttendingStudents(c.id);
+            reg += stats.total;
+            off += stats.offline;
+            on += stats.online;
+        });
+        return { reg, off, on };
     };
 
     const midSub = getSubtotal(middleClasses);
@@ -115,7 +140,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
 
     // Grand Total
     const totalReg = midSub.reg + highSub.reg + newFriendStats.reg + hgyStats.reg;
-    const totalAtt = midSub.att + highSub.att + newFriendStats.att + hgyStats.att;
+    const totalOff = midSub.off + highSub.off + newFriendStats.off + hgyStats.off;
+    const totalOn = midSub.on + highSub.on + newFriendStats.on + hgyStats.on;
 
     // Offerings
     const getOffering = (type: string) => offerings.find(o => o.type === type)?.amount || null;
@@ -204,8 +230,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                                 <td>{c.name.replace('중등부', '중').replace('고등부', '고')}</td>
                                                 <td>{c.teacher_name || c.teachers?.name}</td>
                                                 <td>{stats.total}</td>
-                                                <td>{stats.count}</td>
-                                                <td></td>
+                                                <td>{stats.offline}</td>
+                                                <td>{stats.online}</td>
                                                 <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
                                                     {stats.names.join(', ')}
                                                 </td>
@@ -215,8 +241,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr className="total-row">
                                         <td colSpan={2}>소계</td>
                                         <td>{midSub.reg}</td>
-                                        <td>{midSub.att}</td>
-                                        <td></td>
+                                        <td>{midSub.off}</td>
+                                        <td>{midSub.on}</td>
                                         <td></td>
                                     </tr>
 
@@ -228,8 +254,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                                 <td>{c.name.replace('중등부', '중').replace('고등부', '고')}</td>
                                                 <td>{c.teacher_name || c.teachers?.name}</td>
                                                 <td>{stats.total}</td>
-                                                <td>{stats.count}</td>
-                                                <td></td>
+                                                <td>{stats.offline}</td>
+                                                <td>{stats.online}</td>
                                                 <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
                                                     {stats.names.join(', ')}
                                                 </td>
@@ -239,8 +265,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr className="total-row">
                                         <td colSpan={2}>소계</td>
                                         <td>{highSub.reg}</td>
-                                        <td>{highSub.att}</td>
-                                        <td></td>
+                                        <td>{highSub.off}</td>
+                                        <td>{highSub.on}</td>
                                         <td></td>
                                     </tr>
 
@@ -248,8 +274,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr>
                                         <td colSpan={2}>새친구</td>
                                         <td>{newFriendStats.reg}</td>
-                                        <td>{newFriendStats.att}</td>
-                                        <td></td>
+                                        <td>{newFriendStats.off}</td>
+                                        <td>{newFriendStats.on}</td>
                                         <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
                                             {newFriendsClasses.map(c => getAttendingStudents(c.id).names.join(', ')).join(', ')}
                                         </td>
@@ -257,8 +283,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr>
                                         <td colSpan={2}>한과영</td>
                                         <td>{hgyStats.reg}</td>
-                                        <td>{hgyStats.att}</td>
-                                        <td></td>
+                                        <td>{hgyStats.off}</td>
+                                        <td>{hgyStats.on}</td>
                                         <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
                                             {hgyClasses.map(c => getAttendingStudents(c.id).names.join(', ')).join(', ')}
                                         </td>
@@ -267,8 +293,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr className="total-row" style={{ backgroundColor: '#eee' }}>
                                         <td colSpan={2}>합계</td>
                                         <td>{totalReg}</td>
-                                        <td>{totalAtt}</td>
-                                        <td></td>
+                                        <td>{totalOff}</td>
+                                        <td>{totalOn}</td>
                                         <td></td>
                                     </tr>
                                 </tbody>
