@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { Class, Student } from '@/types/database';
-import { ChevronRight } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 export default function RosterManager() {
     const [classes, setClasses] = useState<Class[]>([]);
@@ -42,6 +42,17 @@ export default function RosterManager() {
         }
     };
 
+    const deleteStudent = async (studentId: string) => {
+        if (!confirm('정말 명단에서 삭제하시겠습니까? (복구 불가)')) return;
+        const { error } = await supabase.from('students').delete().eq('id', studentId);
+
+        if (error) {
+            alert('삭제 실패: ' + error.message);
+        } else {
+            setStudents(prev => prev.filter(s => s.id !== studentId));
+        }
+    };
+
     // Grouping
     const unassignedStudents = students.filter(s => !s.class_id);
     const assignedStudents = students.filter(s => s.class_id);
@@ -63,20 +74,29 @@ export default function RosterManager() {
                     </h3>
                     <div className="flex-1 overflow-y-auto space-y-1">
                         {unassignedStudents.map(s => (
-                            <div key={s.id} className="bg-white p-2 rounded shadow-sm flex justify-between items-center border">
+                            <div key={s.id} className="bg-white p-2 rounded shadow-sm flex justify-between items-center border group">
                                 <span className="text-black font-medium">{s.name}</span>
-                                <select
-                                    className="text-xs border p-1 rounded text-black max-w-[120px]"
-                                    onChange={(e) => moveStudent(s.id, e.target.value)}
-                                    value=""
-                                >
-                                    <option value="" disabled>반 선택...</option>
-                                    {classes.map(c => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.grade === 'Middle' ? '중' : '고'} {c.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        className="text-xs border p-1 rounded text-black max-w-[100px]"
+                                        onChange={(e) => moveStudent(s.id, e.target.value)}
+                                        value=""
+                                    >
+                                        <option value="" disabled>반 선택...</option>
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.grade === 'Middle' ? '중' : '고'} {c.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={() => deleteStudent(s.id)}
+                                        className="text-gray-300 hover:text-red-500 p-1"
+                                        title="삭제"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -120,14 +140,23 @@ export default function RosterManager() {
                         {selectedClassId !== 'unassigned' && (
                             <div className="space-y-1">
                                 {students.filter(s => s.class_id === selectedClassId).map(s => (
-                                    <div key={s.id} className="bg-white p-2 rounded shadow-sm flex justify-between items-center border">
+                                    <div key={s.id} className="bg-white p-2 rounded shadow-sm flex justify-between items-center border group">
                                         <span className="text-black">{s.name}</span>
-                                        <button
-                                            onClick={() => moveStudent(s.id, null)}
-                                            className="text-xs text-red-500 hover:bg-red-50 p-1 rounded"
-                                        >
-                                            미배정으로 이동
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => moveStudent(s.id, null)}
+                                                className="text-xs text-blue-500 hover:bg-blue-50 px-2 py-1 rounded border border-blue-200"
+                                            >
+                                                미배정 이동
+                                            </button>
+                                            <button
+                                                onClick={() => deleteStudent(s.id)}
+                                                className="text-gray-300 hover:text-red-500 p-1 ml-1"
+                                                title="삭제"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                                 {students.filter(s => s.class_id === selectedClassId).length === 0 && (
