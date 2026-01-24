@@ -11,6 +11,15 @@ export default function RosterManager() {
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedClassId, setSelectedClassId] = useState<string>('unassigned');
+    const [newStudentName, setNewStudentName] = useState('');
+
+    const addStudent = async () => {
+        const val = newStudentName.trim();
+        if (!val) return;
+        await supabase.from('students').insert([{ name: val, class_id: null }]);
+        setNewStudentName('');
+        fetchData();
+    };
 
     // Load Data
     const fetchData = async () => {
@@ -102,19 +111,23 @@ export default function RosterManager() {
                     </div>
                     {/* Create New Student Inline */}
                     <div className="mt-2 pt-2 border-t">
-                        <input
-                            className="w-full border p-2 rounded text-sm text-black"
-                            placeholder="새 학생 이름 입력 + Enter"
-                            onKeyDown={async e => {
-                                if (e.key === 'Enter') {
-                                    const val = e.currentTarget.value.trim();
-                                    if (!val) return;
-                                    await supabase.from('students').insert([{ name: val, class_id: null }]);
-                                    e.currentTarget.value = '';
-                                    fetchData();
-                                }
-                            }}
-                        />
+                        <div className="flex gap-2">
+                            <input
+                                className="flex-1 border p-2 rounded text-sm text-black"
+                                placeholder="새 학생 이름 입력"
+                                value={newStudentName}
+                                onChange={e => setNewStudentName(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') addStudent();
+                                }}
+                            />
+                            <button
+                                onClick={addStudent}
+                                className="bg-indigo-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-indigo-700 whitespace-nowrap"
+                            >
+                                추가
+                            </button>
+                        </div>
                     </div>
                 </div>
 
