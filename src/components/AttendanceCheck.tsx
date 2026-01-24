@@ -4,15 +4,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { Student } from '@/types/database';
+import { Plus } from 'lucide-react';
 
 interface AttendanceCheckProps {
     logId: string | null;
     classId: string;
     classNameStr: string;
     teacherName?: string;
+    allowAddStudent?: boolean;
 }
 
-export default function AttendanceCheck({ logId, classId, classNameStr, teacherName }: AttendanceCheckProps) {
+export default function AttendanceCheck({ logId, classId, classNameStr, teacherName, allowAddStudent }: AttendanceCheckProps) {
     const [students, setStudents] = useState<Student[]>([]);
     const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
@@ -83,8 +85,15 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
         }
     };
 
-    if (students.length === 0) return null; // Hide empty classes from view? Or show empty state. 
     // Let's show it so user knows the class exists.
+    const addStudent = async () => {
+        const name = prompt('새 학생 이름을 입력하세요:');
+        if (!name || !name.trim()) return;
+
+        const { error } = await supabase.from('students').insert({ name: name.trim(), class_id: classId, is_active: true });
+        if (error) alert('추가 실패: ' + error.message);
+        else fetchData();
+    };
 
     return (
         <div className="border rounded p-4 mb-4 bg-white shadow-sm">
@@ -97,7 +106,7 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
                 </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
                 {students.map(student => (
                     <button
                         key={student.id}
@@ -113,7 +122,17 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
                         {student.name}
                     </button>
                 ))}
-                {students.length === 0 && <p className="text-gray-400 text-sm italic">학생이 없습니다.</p>}
+
+                {allowAddStudent && (
+                    <button
+                        onClick={addStudent}
+                        className="px-3 py-1 rounded-full border border-dashed border-gray-400 text-gray-400 hover:border-blue-400 hover:text-blue-500 flex items-center gap-1"
+                    >
+                        <Plus size={14} /> 추가
+                    </button>
+                )}
+
+                {!allowAddStudent && students.length === 0 && <p className="text-gray-400 text-sm italic">학생이 없습니다.</p>}
             </div>
         </div>
     );

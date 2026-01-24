@@ -102,13 +102,40 @@ export default function Home() {
                 </div>
               </div>
 
-              <div>
+              <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">고등부</h3>
                 <div className="space-y-2">
                   {highClasses.map(cls => (
                     <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} />
                   ))}
                   {highClasses.length === 0 && <p className="text-gray-400">등록된 반이 없습니다.</p>}
+                </div>
+              </div>
+
+              {/* Special Groups */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">새친구 & 기타</h3>
+                <div className="space-y-2">
+                  {/* We need to ensure these classes exist. For MVP, we pass special flags or ID lookups if we knew them. 
+                       But simpler is to look them up by Name in the classes array or Create them if missing?
+                       Better: Filter classes with grade='Special' or handle in UI. 
+                       User asked for 'New Friends' and 'Han Gwa Young' specifically. 
+                   */}
+                  {classes.filter(c => c.name === '새친구').map(cls => (
+                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr="🌱 새친구" allowAddStudent={true} />
+                  ))}
+                  {classes.filter(c => c.name === '한과영').map(cls => (
+                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr="🏫 한과영" allowAddStudent={true} />
+                  ))}
+
+                  {/* Helper: If they don't exist, maybe show a button to create them? Or we assume user created them via Admin.
+                       Let's Add a helper note if they are missing.
+                   */}
+                  {classes.filter(c => c.name === '새친구' || c.name === '한과영').length === 0 && (
+                    <div className="text-sm text-red-500">
+                      * '새친구'와 '한과영' 반을 [반/명단 관리] 탭에서 생성해주세요. (이름 정확히 '새친구', '한과영')
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
