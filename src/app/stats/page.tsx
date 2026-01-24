@@ -148,32 +148,37 @@ export default function StatsPage() {
                 </div>
 
                 {/* Filter */}
-                <div className="bg-gray-50 p-4 rounded mb-6 flex gap-4 items-end border">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700">시작일</label>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={e => setStartDate(e.target.value)}
-                            className="border p-2 rounded text-black"
-                        />
+                <div className="bg-gray-50 p-4 rounded mb-6 border">
+                    <div className="flex flex-col md:flex-row md:items-end gap-4">
+                        <div className="flex gap-2 flex-1">
+                            <div className="flex-1">
+                                <label className="block text-sm font-bold text-gray-700 mb-1">시작일</label>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={e => setStartDate(e.target.value)}
+                                    className="border p-2 rounded text-black w-full"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-sm font-bold text-gray-700 mb-1">종료일</label>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={e => setEndDate(e.target.value)}
+                                    className="border p-2 rounded text-black w-full"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={calculateStats}
+                            className="bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-700 w-full md:w-auto h-[42px]"
+                        >
+                            조회
+                        </button>
                     </div>
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700">종료일</label>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={e => setEndDate(e.target.value)}
-                            className="border p-2 rounded text-black"
-                        />
-                    </div>
-                    <button
-                        onClick={calculateStats}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700"
-                    >
-                        조회
-                    </button>
-                    <div className="ml-auto text-gray-600">
+                    <div className="mt-3 text-right text-gray-600 text-sm">
                         총 예배 횟수: <strong className="text-black text-lg">{totalServices}</strong>회
                     </div>
                 </div>
