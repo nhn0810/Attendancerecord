@@ -187,11 +187,11 @@ export default function StatsPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-indigo-50 border-b-2 border-indigo-200">
-                                    <th className="p-3 font-bold text-gray-700">이름</th>
-                                    <th className="p-3 font-bold text-gray-700">소속 반</th>
-                                    <th className="p-3 font-bold text-gray-700 text-center">출석 횟수</th>
-                                    <th className="p-3 font-bold text-gray-700 text-center">출석률(%)</th>
-                                    <th className="p-3 font-bold text-gray-700 text-center">상태</th>
+                                    <th className="p-3 font-bold text-gray-700 whitespace-nowrap">이름</th>
+                                    <th className="p-3 font-bold text-gray-700 whitespace-nowrap">소속 반</th>
+                                    <th className="p-3 font-bold text-gray-700 text-center whitespace-nowrap">출석</th>
+                                    <th className="p-3 font-bold text-gray-700 text-center min-w-[150px]">출석률(%)</th>
+                                    <th className="p-3 font-bold text-gray-700 text-center whitespace-nowrap">상태</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -201,18 +201,24 @@ export default function StatsPage() {
                                         className="border-b hover:bg-gray-100 text-black cursor-pointer group"
                                         onClick={() => openStudentDetail(row.id, row.name)}
                                     >
-                                        <td className="p-3 font-bold text-indigo-900 group-hover:text-indigo-600 underline decoration-dotted underline-offset-4">{row.name}</td>
-                                        <td className="p-3 text-sm text-gray-600">{row.className}</td>
-                                        <td className="p-3 text-center">{row.present}</td>
-                                        <td className="p-3 text-center">
+                                        <td className="p-3 font-bold text-indigo-900 group-hover:text-indigo-600 underline decoration-dotted underline-offset-4 whitespace-nowrap text-center align-middle">
+                                            <div className="flex flex-col items-center">
+                                                <span>{row.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-3 text-sm text-gray-600 whitespace-nowrap text-center align-middle">
+                                            {row.className.replace('중등부 ', '중').replace('고등부 ', '고')}
+                                        </td>
+                                        <td className="p-3 text-center align-middle whitespace-nowrap">{row.present}</td>
+                                        <td className="p-3 text-center align-middle">
                                             <div className="flex items-center justify-center gap-2">
-                                                <div className="w-24 bg-gray-200 rounded-full h-2.5">
+                                                <div className="w-24 bg-gray-200 rounded-full h-2.5 min-w-[80px]">
                                                     <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${row.rate}%` }}></div>
                                                 </div>
                                                 <span className="text-xs w-8">{row.rate}%</span>
                                             </div>
                                         </td>
-                                        <td className="p-3 text-center">
+                                        <td className="p-3 text-center align-middle whitespace-nowrap">
                                             {row.isPerfect && totalServices > 0 && (
                                                 <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold border border-yellow-400">
                                                     🏆 개근

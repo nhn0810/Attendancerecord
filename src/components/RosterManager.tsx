@@ -66,13 +66,13 @@ export default function RosterManager() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[500px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[70vh] min-h-[500px]">
                 {/* Left: Unassigned / Source */}
-                <div className="border rounded-lg p-3 flex flex-col bg-gray-50">
+                <div className="border rounded-lg p-3 flex flex-col bg-gray-50 h-full overflow-hidden">
                     <h3 className="font-bold text-gray-700 mb-2 border-b pb-2">
                         미배정 학생 ({unassignedStudents.length})
                     </h3>
-                    <div className="flex-1 overflow-y-auto space-y-1">
+                    <div className="flex-1 overflow-y-auto space-y-1 pr-1">
                         {unassignedStudents.map(s => (
                             <div key={s.id} className="bg-white p-2 rounded shadow-sm flex justify-between items-center border group">
                                 <span className="text-black font-medium">{s.name}</span>
@@ -119,7 +119,7 @@ export default function RosterManager() {
                 </div>
 
                 {/* Right: Classes View */}
-                <div className="border rounded-lg p-3 flex flex-col bg-gray-50">
+                <div className="border rounded-lg p-3 flex flex-col bg-gray-50 h-full overflow-hidden">
                     <div className="flex justify-between mb-2 pb-2 border-b">
                         <h3 className="font-bold text-gray-700">반별 현황</h3>
                         <select
