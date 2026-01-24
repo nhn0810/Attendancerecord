@@ -102,15 +102,41 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
         return {
             total: classStudents.length,
             count: attending.length,
-            names: attending.map(s => s.name).join(', ')
+            names: attending.map(s => s.name)
         };
     };
 
     const middleClasses = classes.filter(c => c.grade === 'Middle');
     const highClasses = classes.filter(c => c.grade === 'High');
 
-    // Calculate totals
-    const totalAttendanceCount = attendance.length;
+    // Subtotals
+    const getSubtotal = (clsList: Class[]) => {
+        let reg = 0;
+        let att = 0;
+        clsList.forEach(c => {
+            const stats = getAttendingStudents(c.id);
+            reg += stats.total;
+            att += stats.count;
+        });
+        return { reg, att };
+    };
+
+    const midSub = getSubtotal(middleClasses);
+    const highSub = getSubtotal(highClasses);
+
+    // Special
+    const newFriendsClasses = classes.filter(c => c.name === '새친구');
+    const newFriendStats = getSubtotal(newFriendsClasses);
+
+    const hgyClasses = classes.filter(c => c.name === '한과영');
+    const hgyStats = getSubtotal(hgyClasses);
+
+    // Totals
+    const totalReg = midSub.reg + highSub.reg + newFriendStats.reg + hgyStats.reg;
+    const totalAtt = midSub.att + highSub.att + newFriendStats.att + hgyStats.att;
+
+    // Offerings
+    const offeringTypes = ['주일헌금', '십일조', '감사헌금'];
     const totalOffering = offerings.reduce((sum, o) => sum + (o.amount || 0), 0);
 
     // Teachers
@@ -133,145 +159,201 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                 {logData && (
                     <div
                         ref={ref}
-                        className="w-[800px] bg-white p-12 text-black font-serif border border-gray-300 relative"
-                        style={{ minHeight: '1100px' }}
+                        className="w-[850px] bg-white p-10 text-black font-sans box-border"
+                        style={{ minHeight: '1200px' }}
                     >
-                        {/* Header */}
-                        <div className="text-center mb-8 relative">
-                            <h1 className="text-4xl font-extrabold border-2 border-black inline-block px-8 py-2">중 · 고 등 부 &nbsp; 예 배 일 지</h1>
-                            <div className="absolute right-0 bottom-0 text-lg font-bold">
-                                {logData.date.split('-')[0]}년 {logData.date.split('-')[1]}월 {logData.date.split('-')[2]}일
+                        {/* 1. Header Area with Title and Table */}
+                        <div className="mb-6">
+                            {/* Title Row */}
+                            <div className="flex justify-between items-end mb-2 border-b-2 border-black pb-2">
+                                <div className="text-xl font-bold">1. 예배</div>
+                                <div className="text-4xl font-black text-center tracking-widest absolute left-1/2 transform -translate-x-1/2 bg-gray-100 border-2 border-black px-8 py-2">
+                                    중 · 고등부 예배일지
+                                </div>
+                                <div className="text-lg font-bold">
+                                    {logData.date.split('-')[0]}년 {logData.date.split('-')[1]}월 {logData.date.split('-')[2]}일
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Worship Info Box */}
-                        <div className="border-2 border-black mb-6">
-                            <div className="flex border-b border-black">
-                                <div className="w-24 bg-gray-100 font-bold border-r border-black p-2 text-center flex items-center justify-center">기 도</div>
-                                <div className="flex-1 p-2">{logData.prayer || '-'}</div>
-                                <div className="w-24 bg-gray-100 font-bold border-l border-r border-black p-2 text-center flex items-center justify-center">말씀제목</div>
-                                <div className="flex-1 p-2">{logData.sermon_title || '-'}</div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-24 bg-gray-100 font-bold border-r border-black p-2 text-center flex items-center justify-center">본 문</div>
-                                <div className="flex-1 p-2">{logData.sermon_text || '-'}</div>
-                                <div className="w-24 bg-gray-100 font-bold border-l border-r border-black p-2 text-center flex items-center justify-center">설교자</div>
-                                <div className="flex-1 p-2">{logData.preacher || '-'}</div>
-                            </div>
-                        </div>
-
-                        {/* Attendance Table */}
-                        <table className="w-full border-2 border-black mb-6 text-center">
-                            <thead>
-                                <tr className="bg-gray-100 border-b-2 border-black">
-                                    <th className="border-r border-black p-2 w-16">학년</th>
-                                    <th className="border-r border-black p-2 w-24">반</th>
-                                    <th className="border-r border-black p-2 w-24">담임</th>
-                                    <th className="border-r border-black p-2 w-16">재적</th>
-                                    <th className="border-r border-black p-2 w-16">출석</th>
-                                    <th className="p-2">명 단 (출석자)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {/* Middle School */}
-                                {middleClasses.map((cls, idx) => {
-                                    const stats = getAttendingStudents(cls.id);
-                                    return (
-                                        <tr key={cls.id} className="border-b border-black text-lg h-16">
-                                            {idx === 0 && <td rowSpan={middleClasses.length} className="border-r border-black font-bold">중등</td>}
-                                            <td className="border-r border-black font-bold">{cls.name.replace('중등부', '')}</td>
-                                            <td className="border-r border-black">{cls.teacher_name || cls.teachers?.name || '-'}</td>
-                                            <td className="border-r border-black">{stats.total}</td>
-                                            <td className="border-r border-black font-bold">{stats.count}</td>
-                                            <td className="text-left px-4 tracking-wide text-sm font-medium leading-relaxed">
-                                                {stats.names.split(', ').map(n => n && (
-                                                    <span key={n} className="inline-block border border-black rounded-full px-2 py-0.5 mr-2 mb-1">{n}</span>
-                                                ))}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-
-                                {/* High School */}
-                                {highClasses.map((cls, idx) => {
-                                    const stats = getAttendingStudents(cls.id);
-                                    return (
-                                        <tr key={cls.id} className="border-b border-black text-lg h-16">
-                                            {idx === 0 && <td rowSpan={highClasses.length} className="border-r border-black font-bold">고등</td>}
-                                            <td className="border-r border-black font-bold">{cls.name.replace('고등부', '')}</td>
-                                            <td className="border-r border-black">{cls.teacher_name || cls.teachers?.name || '-'}</td>
-                                            <td className="border-r border-black">{stats.total}</td>
-                                            <td className="border-r border-black font-bold">{stats.count}</td>
-                                            <td className="text-left px-4 tracking-wide text-sm font-medium leading-relaxed">
-                                                {stats.names.split(', ').map(n => n && (
-                                                    <span key={n} className="inline-block border border-black rounded-full px-2 py-0.5 mr-2 mb-1">{n}</span>
-                                                ))}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-
-                                {/* Special Groups */}
-                                {[...classes.filter(c => c.name === '새친구'), ...classes.filter(c => c.name === '한과영')].map(cls => {
-                                    const stats = getAttendingStudents(cls.id);
-                                    return (
-                                        <tr key={cls.id} className="border-b border-black text-lg h-16 bg-gray-50">
-                                            <td colSpan={2} className="border-r border-black font-bold">{cls.name}</td>
-                                            <td className="border-r border-black">-</td>
-                                            <td className="border-r border-black">{stats.total}</td>
-                                            <td className="border-r border-black font-bold">{stats.count}</td>
-                                            <td className="text-left px-4 tracking-wide text-sm font-medium leading-relaxed">
-                                                {stats.names.split(', ').map(n => n && (
-                                                    <span key={n} className="inline-block border border-black rounded-full px-2 py-0.5 mr-2 mb-1">{n}</span>
-                                                ))}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-
-                                {/* Summary Row */}
-                                <tr className="bg-gray-100 font-bold h-12">
-                                    <td colSpan={4} className="border-r border-black text-right pr-4">합 계</td>
-                                    <td className="border-r border-black">{totalAttendanceCount}</td>
-                                    <td></td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        {/* Footer Tables */}
-                        <div className="flex gap-4">
-                            {/* Offerings */}
-                            <table className="w-1/2 border-2 border-black text-center">
+                            {/* Header Info Table */}
+                            <table className="w-full border-2 border-black text-center text-lg">
                                 <tbody>
-                                    <tr className="border-b border-black bg-gray-100">
-                                        <th className="p-2 border-r border-black">헌금 종류</th>
-                                        <th className="p-2">금 액</th>
+                                    <tr className="border-b border-black h-12">
+                                        <td className="bg-gray-100 font-bold border-r border-black w-24">기 도</td>
+                                        <td className="border-r border-black">{logData.prayer || ''}</td>
+                                        <td className="bg-gray-100 font-bold border-r border-black w-32">말씀 제목</td>
+                                        <td className="text-left px-4">{logData.sermon_title || ''}</td>
                                     </tr>
-                                    {offerings.map(o => (
-                                        <tr key={o.type} className="border-b border-black">
-                                            <td className="border-r border-black p-2">{o.type}</td>
-                                            <td className="p-2 text-right pr-4">{o.amount?.toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                    <tr className="bg-gray-100 font-bold">
-                                        <td className="border-r border-black p-2">총 계</td>
-                                        <td className="p-2 text-right pr-4">{totalOffering.toLocaleString()}</td>
+                                    <tr className="h-12">
+                                        <td className="bg-gray-100 font-bold border-r border-black">본 문</td>
+                                        <td className="border-r border-black">{logData.sermon_text || ''}</td>
+                                        <td className="bg-gray-100 font-bold border-r border-black">설 교 자</td>
+                                        <td>{logData.preacher || ''}</td>
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
 
-                            {/* Teachers */}
-                            <div className="w-1/2 border-2 border-black p-4 flex flex-col justify-center">
-                                <h3 className="font-bold border-b border-black mb-2 pb-1 text-center">교사 및 간사 출석 ({attendingTeachers.length}명)</h3>
-                                <div className="text-sm leading-6 text-center">
-                                    {teacherNames}
+                        {/* 2. Main Table */}
+                        <div className="mb-6">
+                            <div className="text-xl font-bold mb-1">2. 학생</div>
+                            <table className="w-full border-2 border-black text-center border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-100 h-10 border-b border-black">
+                                        <th className="border border-black w-14">학년</th>
+                                        <th className="border border-black w-24">반</th>
+                                        <th className="border border-black w-20">담임</th>
+                                        <th className="border border-black w-14">재적</th>
+                                        <th className="border border-black w-14">출석</th>
+                                        {/* <th className="border border-black w-14">온라인</th> Ignored */}
+                                        <th className="border border-black">명 단</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {/* Middle School */}
+                                    {middleClasses.map((cls, idx) => {
+                                        const stats = getAttendingStudents(cls.id);
+                                        return (
+                                            <tr key={cls.id} className="h-14 border border-black">
+                                                {idx === 0 && <td rowSpan={middleClasses.length + 1} className="font-bold text-lg border border-black align-middle">중등</td>}
+                                                <td className="border border-black font-bold">{cls.name.replace('중등부', '')}</td>
+                                                <td className="border border-black">{cls.teacher_name || cls.teachers?.name || ''}</td>
+                                                <td className="border border-black">{stats.total}</td>
+                                                <td className="border border-black font-bold">{stats.count}</td>
+                                                {/* <td className="border border-black">0</td> */}
+                                                <td className="text-left px-2 py-1 align-middle leading-snug">
+                                                    {stats.names.map(n => (
+                                                        <span key={n} style={{ border: '1px solid black', borderRadius: '50%', padding: '2px 6px', margin: '2px', display: 'inline-block', fontSize: '14px' }}>{n}</span>
+                                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {/* Middle Subtotal */}
+                                    <tr className="bg-gray-50 h-10 border border-black font-bold">
+                                        <td colSpan={2} className="border border-black">소 계</td>
+                                        <td className="border border-black">{midSub.reg}</td>
+                                        <td className="border border-black">{midSub.att}</td>
+                                        <td className="border border-black bg-gray-100 text-gray-400 diagonal-line"></td>
+                                    </tr>
+
+                                    {/* High School */}
+                                    {highClasses.map((cls, idx) => {
+                                        const stats = getAttendingStudents(cls.id);
+                                        return (
+                                            <tr key={cls.id} className="h-14 border border-black">
+                                                {idx === 0 && <td rowSpan={highClasses.length + 1} className="font-bold text-lg border border-black align-middle">고등</td>}
+                                                <td className="border border-black font-bold">{cls.name.replace('고등부', '')}</td>
+                                                <td className="border border-black">{cls.teacher_name || cls.teachers?.name || ''}</td>
+                                                <td className="border border-black">{stats.total}</td>
+                                                <td className="border border-black font-bold">{stats.count}</td>
+                                                <td className="text-left px-2 py-1 align-middle leading-snug">
+                                                    {stats.names.map(n => (
+                                                        <span key={n} style={{ border: '1px solid black', borderRadius: '50%', padding: '2px 6px', margin: '2px', display: 'inline-block', fontSize: '14px' }}>{n}</span>
+                                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {/* High Subtotal */}
+                                    <tr className="bg-gray-50 h-10 border border-black font-bold">
+                                        <td colSpan={2} className="border border-black">소 계</td>
+                                        <td className="border border-black">{highSub.reg}</td>
+                                        <td className="border border-black">{highSub.att}</td>
+                                        <td className="border border-black bg-gray-100 text-gray-400"></td>
+                                    </tr>
+
+                                    {/* Special: New Friends */}
+                                    <tr className="h-12 border border-black">
+                                        <td rowSpan={2} className="font-bold border border-black bg-gray-50">기타</td>
+                                        <td className="border border-black font-bold">새친구</td>
+                                        <td className="border border-black">-</td>
+                                        <td className="border border-black">{newFriendStats.reg}</td>
+                                        <td className="border border-black font-bold">{newFriendStats.att}</td>
+                                        <td className="text-left px-2 py-1 align-middle">
+                                            {newFriendsClasses.map(c => getAttendingStudents(c.id).names.map(n => (
+                                                <span key={n} style={{ border: '1px solid black', borderRadius: '50%', padding: '2px 6px', margin: '2px', display: 'inline-block', fontSize: '14px' }}>{n}</span>
+                                            )))}
+                                        </td>
+                                    </tr>
+                                    {/* Special: HanGwaYoung */}
+                                    <tr className="h-12 border border-black">
+                                        <td className="border border-black font-bold">한과영</td>
+                                        <td className="border border-black">-</td>
+                                        <td className="border border-black">{hgyStats.reg}</td>
+                                        <td className="border border-black font-bold">{hgyStats.att}</td>
+                                        <td className="text-left px-2 py-1 align-middle">
+                                            {hgyClasses.map(c => getAttendingStudents(c.id).names.map(n => (
+                                                <span key={n} style={{ border: '1px solid black', borderRadius: '50%', padding: '2px 6px', margin: '2px', display: 'inline-block', fontSize: '14px' }}>{n}</span>
+                                            )))}
+                                        </td>
+                                    </tr>
+
+                                    {/* Grand Total */}
+                                    <tr className="h-12 border-2 border-black font-bold bg-gray-200 text-lg">
+                                        <td colSpan={3} className="border border-black">합 계</td>
+                                        <td className="border border-black">{totalReg}</td>
+                                        <td className="border border-black text-xl">{totalAtt}</td>
+                                        <td className="border border-black text-right pr-4 text-sm font-normal pt-3">
+                                            (현장: {totalAtt})
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 3. Offerings & 4. Staff */}
+                        <div className="flex gap-4">
+                            {/* 3. Offerings */}
+                            <div className="w-1/2">
+                                <div className="text-xl font-bold mb-1">3. 헌금</div>
+                                <table className="w-full border-2 border-black text-center h-full">
+                                    <thead>
+                                        <tr className="bg-gray-100 h-10 border-b border-black">
+                                            {offeringTypes.map(t => (
+                                                <th key={t} className="border border-black">{t}</th>
+                                            ))}
+                                            <th className="border border-black">기타</th>
+                                            <th className="border border-black">합계</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className="h-16 font-bold text-lg">
+                                            {offeringTypes.map(t => {
+                                                const val = offerings.find(o => o.type === t)?.amount || 0;
+                                                return <td key={t} className="border border-black">{val ? val.toLocaleString() : ''}</td>
+                                            })}
+                                            <td className="border border-black">
+                                                {offerings.filter(o => !offeringTypes.includes(o.type)).reduce((acc, cur) => acc + (cur.amount || 0), 0).toLocaleString()}
+                                            </td>
+                                            <td className="border border-black bg-gray-50">{totalOffering.toLocaleString()}</td>
+                                        </tr>
+                                        <tr className="h-8 border-t border-black">
+                                            <td colSpan={5} className="text-left px-2 text-sm italic">
+                                                {/* Optional notes */}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* 4. Staff */}
+                            <div className="w-1/2">
+                                <div className="text-xl font-bold mb-1">4. 교사 및 간사 출석</div>
+                                <div className="border-2 border-black h-[110px] p-4 flex flex-col items-center justify-center bg-white relative">
+                                    <div className="text-center font-bold mb-2 text-lg">
+                                        총 {attendingTeachers.length} 명
+                                    </div>
+                                    <div className="text-center text-sm leading-relaxed px-4 break-keep">
+                                        {teacherNames}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Timestamp */}
-                        <div className="text-right mt-8 text-gray-500 text-xs">
-                            출력일시: {new Date().toLocaleString()} / System by Antigravity
+                        {/* Timestamp Footer */}
+                        <div className="text-right mt-6 text-gray-400 text-xs">
+                            System by Antigravity | Printed: {new Date().toLocaleString()}
                         </div>
 
                     </div>
