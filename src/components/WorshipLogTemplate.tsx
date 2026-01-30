@@ -110,6 +110,45 @@ const WorshipLogTemplate = forwardRef<HTMLDivElement, WorshipLogTemplateProps>(
                                     </tr>
                                 );
                             })}
+
+                            {/* New Friends Row */}
+                            {(() => {
+                                const newFriends = students.filter(s => s.tags?.includes('새친구'));
+                                if (newFriends.length > 0) {
+                                    return (
+                                        <tr className="bg-green-50">
+                                            <td className="border border-black p-1 font-bold text-green-700">새친구</td>
+                                            <td className="border border-black p-1 text-green-700">-</td>
+                                            <td className="border border-black p-1">{newFriends.length}</td>
+                                            <td className="border border-black p-1">{countPresent(newFriends)}</td>
+                                            <td className="border border-black p-1 text-left break-keep text-xs">
+                                                {newFriends.map(s => (
+                                                    <span key={s.id + '_nf'} className={`inline-block mr-2 mb-1 relative`}>
+                                                        {attendance.has(s.id) && (
+                                                            <span className="absolute -top-[2px] -left-[2px] w-[calc(100%+4px)] h-[calc(100%+4px)] border border-red-500 rounded-full"></span>
+                                                        )}
+                                                        <span className="font-bold text-green-700">{s.name}</span>
+                                                    </span>
+                                                ))}
+                                            </td>
+                                        </tr>
+                                    );
+                                }
+                                return null;
+                            })()}
+
+                            {/* Online Attendance Row */}
+                            {(log?.online_attendance_count || 0) > 0 && (
+                                <tr className="bg-blue-50">
+                                    <td className="border border-black p-1 font-bold text-blue-700">온라인</td>
+                                    <td className="border border-black p-1 text-blue-700">-</td>
+                                    <td className="border border-black p-1">-</td>
+                                    <td className="border border-black p-1 font-bold">{log?.online_attendance_count}</td>
+                                    <td className="border border-black p-1 text-xs text-gray-500 text-center">
+                                        (명단 생략)
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

@@ -13,6 +13,7 @@ export interface Student {
     name: string;
     class_id: string | null; // Null if unassigned
     is_active: boolean;
+    tags?: string[] | null;
 }
 
 export interface Teacher {
@@ -32,6 +33,8 @@ export interface WorshipLog {
     preacher: string;
     coupon_recipient_count: number;
     coupons_per_person: number;
+    online_attendance_count?: number;
+    online_attendance_names?: string;
 }
 
 export interface Attendance {

@@ -1,9 +1,9 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import Link from 'next/link';
+import StudentNameDisplay from '@/components/StudentNameDisplay';
 
 export default function StatsPage() {
     const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]); // Jan 1st
@@ -12,6 +12,20 @@ export default function StatsPage() {
     const [stats, setStats] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [totalServices, setTotalServices] = useState(0);
+
+    // Filters
+    const [selectedGrade, setSelectedGrade] = useState<'All' | 'Middle' | 'High'>('All');
+    const [classes, setClasses] = useState<{ id: string, name: string, grade: string }[]>([]);
+    const [selectedClassId, setSelectedClassId] = useState<string>('All');
+
+    useEffect(() => {
+        // Fetch All Classes for Filter
+        const fetchClasses = async () => {
+            const { data } = await supabase.from('classes').select('*').order('name');
+            setClasses(data || []);
+        };
+        fetchClasses();
+    }, []);
 
     const calculateStats = async () => {
         setLoading(true);
@@ -34,44 +48,67 @@ export default function StatsPage() {
             }
 
             // 2. Get All Students
-            const { data: students } = await supabase
+            let query = supabase
                 .from('students')
-                .select('id, name, classes(name, grade)')
-                .eq('is_active', true)
-                .order('name');
+                .select('id, name, tags, classes(id, name, grade)') // Added tags
+                .eq('is_active', true);
+
+            // Client-side filtering is easier given the joining structure, 
+            // but we can filter by logic after fetch or try deep filtering.
+            // Simple approach: Fetch all, filter in memory.
+            const { data: students } = await query.order('name');
 
             // 3. Get Attendance Counts
             const { data: attendance } = await supabase
                 .from('attendance')
                 .select('student_id')
-                .in('log_id', logIds);
+                .in('log_id', logIds)
+                .in('status', ['present', 'online']); // Count both as present for stats
 
             const attendanceMap: Record<string, number> = {};
             attendance?.forEach(a => {
                 attendanceMap[a.student_id] = (attendanceMap[a.student_id] || 0) + 1;
             });
 
-            // 4. Transform Data
-            const rows = students?.map(s => {
+            // 4. Transform & Filter Data
+            let rows = students?.map(s => {
+                const cls = s.classes as any; // Type assertion
+                const clsName = cls ? cls.name : '미배정';
+                const clsGrade = cls ? cls.grade : 'Unassigned';
+                const clsId = cls ? cls.id : 'unassigned';
+
                 const present = attendanceMap[s.id] || 0;
                 const rate = (present / serviceCount) * 100;
-                // Since it's a left join and we expect one class per student, Supabase returns an object or null if singular, but type inference might vary.
-                // We cast 'classes' to any to avoid complex typing for now, knowing the shape.
-                const cls = s.classes as any;
-                const className = cls ? `${cls.grade === 'Middle' ? '중' : '고'} ${cls.name}` : '미배정';
 
                 return {
                     id: s.id,
                     name: s.name,
-                    className,
+                    tags: s.tags, // Pass tags
+                    className: clsName,
+                    grade: clsGrade,
+                    classId: clsId,
+                    fullClassName: clsName, // Changed: Removed forced prefix since color coding is used
                     present,
                     rate: rate.toFixed(1),
                     isPerfect: present === serviceCount
                 };
             }) || [];
 
-            // Sort by Rate Descending
-            rows.sort((a, b) => Number(b.rate) - Number(a.rate));
+            // Apply Filters
+            if (selectedGrade !== 'All') {
+                rows = rows.filter(r => r.grade === selectedGrade);
+            }
+            if (selectedClassId !== 'All') {
+                rows = rows.filter(r => r.classId === selectedClassId);
+            }
+
+            // Sort by Grade -> Class -> Name (or Rate)
+            rows.sort((a, b) => {
+                if (a.grade !== b.grade) return a.grade === 'Middle' ? 1 : -1; // Middle first? Just grouped.
+                if (a.className !== b.className) return a.className.localeCompare(b.className);
+                return Number(b.rate) - Number(a.rate);
+            });
+
             setStats(rows);
 
         } catch (e) {
@@ -83,16 +120,22 @@ export default function StatsPage() {
 
     useEffect(() => {
         calculateStats();
-    }, []);
+    }, [endDate]);
+
+    // Auto-refresh when filters change?
+    useEffect(() => {
+        calculateStats();
+    }, [selectedGrade, selectedClassId]);
+
 
     // Detail Modal Logic
     const [selectedStudent, setSelectedStudent] = useState<{ id: string, name: string } | null>(null);
-    const [studentLogs, setStudentLogs] = useState<{ logId: string, date: string, present: boolean }[]>([]);
+    const [studentLogs, setStudentLogs] = useState<{ logId: string, date: string, present: boolean, status?: string }[]>([]);
 
     const openStudentDetail = async (studentId: string, studentName: string) => {
         setSelectedStudent({ id: studentId, name: studentName });
 
-        // Fetch all logs in range first (we might have them in logic, but let's fetch cleanly or reuse)
+        // Fetch all logs in range first
         const { data: logs } = await supabase
             .from('worship_logs')
             .select('id, date')
@@ -105,16 +148,18 @@ export default function StatsPage() {
         // Fetch this student's attendance
         const { data: att } = await supabase
             .from('attendance')
-            .select('log_id')
+            .select('log_id, status')
             .eq('student_id', studentId)
             .in('log_id', logs.map(l => l.id));
 
-        const presentSet = new Set(att?.map(a => a.log_id));
+        const attMap = new Map();
+        att?.forEach(a => attMap.set(a.log_id, a.status));
 
         const combined = logs.map(l => ({
             logId: l.id,
             date: l.date,
-            present: presentSet.has(l.id)
+            present: attMap.has(l.id),
+            status: attMap.get(l.id)
         }));
 
         setStudentLogs(combined);
@@ -124,13 +169,13 @@ export default function StatsPage() {
         if (!selectedStudent) return;
 
         // Optimistic Update
-        setStudentLogs(prev => prev.map(l => l.logId === logId ? { ...l, present: !currentStatus } : l));
+        setStudentLogs(prev => prev.map(l => l.logId === logId ? { ...l, present: !currentStatus, status: !currentStatus ? 'present' : undefined } : l));
 
         if (currentStatus) {
             // Was present, now deleting
             await supabase.from('attendance').delete().eq('log_id', logId).eq('student_id', selectedStudent.id);
         } else {
-            // Was absent, now inserting
+            // Was absent, now inserting (default to present)
             await supabase.from('attendance').insert({ log_id: logId, student_id: selectedStudent.id, status: 'present' });
         }
         // Refresh stats in background
@@ -139,7 +184,7 @@ export default function StatsPage() {
 
     return (
         <div className="min-h-screen bg-gray-100 p-8">
-            <div className="max-w-5xl mx-auto bg-white rounded-lg shadow p-6">
+            <div className="max-w-6xl mx-auto bg-white rounded-lg shadow p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold text-gray-900">📊 출석 통계 (Statistics)</h1>
                     <Link href="/" className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
@@ -147,10 +192,11 @@ export default function StatsPage() {
                     </Link>
                 </div>
 
-                {/* Filter */}
+                {/* Filters */}
                 <div className="bg-gray-50 p-4 rounded mb-6 border">
-                    <div className="flex flex-col md:flex-row md:items-end gap-4">
-                        <div className="flex gap-2 flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        {/* Date Range */}
+                        <div className="col-span-2 flex gap-2">
                             <div className="flex-1">
                                 <label className="block text-sm font-bold text-gray-700 mb-1">시작일</label>
                                 <input
@@ -171,21 +217,56 @@ export default function StatsPage() {
                             </div>
                         </div>
 
+                        {/* Grade Filter */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">부서 (Grade)</label>
+                            <select
+                                value={selectedGrade}
+                                onChange={e => { setSelectedGrade(e.target.value as any); setSelectedClassId('All'); }}
+                                className="w-full border p-2 rounded text-black"
+                            >
+                                <option value="All">전체</option>
+                                <option value="Middle">중등부</option>
+                                <option value="High">고등부</option>
+                            </select>
+                        </div>
+
+                        {/* Class Filter */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1">반 (Class)</label>
+                            <select
+                                value={selectedClassId}
+                                onChange={e => setSelectedClassId(e.target.value)}
+                                className="w-full border p-2 rounded text-black"
+                            >
+                                <option value="All">전체</option>
+                                {classes
+                                    .filter(c => selectedGrade === 'All' || c.grade === selectedGrade)
+                                    .map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-4 border-t pt-4">
+                        <div className="text-gray-600">
+                            총 예배: <strong className="text-black text-lg">{totalServices}</strong>회
+                            <span className="mx-2 text-gray-300">|</span>
+                            검색된 학생: {stats.length}명
+                        </div>
                         <button
                             onClick={calculateStats}
-                            className="bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-700 w-full md:w-auto h-[42px]"
+                            className="bg-indigo-600 text-white px-8 py-2 rounded font-bold hover:bg-indigo-700"
                         >
-                            조회
+                            조회 Refresh
                         </button>
-                    </div>
-                    <div className="mt-3 text-right text-gray-600 text-sm">
-                        총 예배 횟수: <strong className="text-black text-lg">{totalServices}</strong>회
                     </div>
                 </div>
 
                 {/* Table */}
                 {loading ? (
-                    <p>Calculating...</p>
+                    <div className="text-center py-10 text-gray-500">계산 중... (Calculating)</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <p className="text-sm text-gray-500 mb-2 italic">* 학생 이름을 클릭하면 세부 출석 내용을 수정할 수 있습니다.</p>
@@ -193,13 +274,20 @@ export default function StatsPage() {
                             <thead>
                                 <tr className="bg-indigo-50 border-b-2 border-indigo-200">
                                     <th className="p-3 font-bold text-gray-700 whitespace-nowrap">이름</th>
-                                    <th className="p-3 font-bold text-gray-700 whitespace-nowrap">소속 반</th>
-                                    <th className="p-3 font-bold text-gray-700 text-center whitespace-nowrap">출석</th>
+                                    <th className="p-3 font-bold text-gray-700 whitespace-nowrap">소속</th>
+                                    <th className="p-3 font-bold text-gray-700 text-center whitespace-nowrap">출석수</th>
                                     <th className="p-3 font-bold text-gray-700 text-center min-w-[150px]">출석률(%)</th>
                                     <th className="p-3 font-bold text-gray-700 text-center whitespace-nowrap">상태</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {stats.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="p-8 text-center text-gray-500">
+                                            해당 기간/조건의 데이터가 없습니다.
+                                        </td>
+                                    </tr>
+                                )}
                                 {stats.map(row => (
                                     <tr
                                         key={row.id}
@@ -207,14 +295,14 @@ export default function StatsPage() {
                                         onClick={() => openStudentDetail(row.id, row.name)}
                                     >
                                         <td className="p-3 font-bold text-indigo-900 group-hover:text-indigo-600 underline decoration-dotted underline-offset-4 whitespace-nowrap text-center align-middle">
-                                            <div className="flex flex-col items-center">
-                                                <span>{row.name}</span>
-                                            </div>
+                                            <StudentNameDisplay student={row} />
                                         </td>
                                         <td className="p-3 text-sm text-gray-600 whitespace-nowrap text-center align-middle">
-                                            {row.className.replace('중등부 ', '중').replace('고등부 ', '고')}
+                                            <span className={`px-2 py-0.5 rounded text-xs border ${row.grade === 'Middle' ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                                                {row.fullClassName}
+                                            </span>
                                         </td>
-                                        <td className="p-3 text-center align-middle whitespace-nowrap">{row.present}</td>
+                                        <td className="p-3 text-center align-middle whitespace-nowrap font-bold text-gray-700">{row.present}</td>
                                         <td className="p-3 text-center align-middle">
                                             <div className="flex items-center justify-center gap-2">
                                                 <div className="w-24 bg-gray-200 rounded-full h-2.5 min-w-[80px]">
@@ -273,7 +361,7 @@ export default function StatsPage() {
                                                     }
                                                 `}
                                             >
-                                                {log.present ? '출석됨' : '결석'}
+                                                {log.present ? (log.status === 'online' ? '온라인' : '현장') : '결석'}
                                             </button>
                                         </div>
                                     ))}

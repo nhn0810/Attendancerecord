@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,6 +13,7 @@ import CouponForm from '@/components/CouponForm';
 import ClassManager from '@/components/ClassManager';
 import RosterManager from '@/components/RosterManager';
 import PaperFormDownload from '@/components/PaperFormDownload';
+import OnlineAttendanceForm from '@/components/OnlineAttendanceForm';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'attendance' | 'admin'>('attendance');
@@ -25,7 +25,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchClasses();
-  }, [activeTab]); // Refresh when switching tabs
+  }, [activeTab]);
 
   const fetchClasses = async () => {
     const { data } = await supabase.from('classes').select('*, teachers(name)').order('name');
@@ -46,111 +46,164 @@ export default function Home() {
   const highClasses = classes.filter(c => c.grade === 'High');
 
   return (
-    <main className="min-h-screen bg-gray-100 p-2 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">중·고등부 예배일지</h1>
+    <main className="min-h-screen bg-slate-50 font-sans text-gray-900">
 
-          <div className="flex gap-2">
-            <Link href="/history" className="bg-white px-3 py-2 rounded shadow-sm text-sm font-bold text-indigo-700 border hover:bg-indigo-50">
-              📅 기록 보기
-            </Link>
-            <Link href="/stats" className="bg-white px-3 py-2 rounded shadow-sm text-sm font-bold text-indigo-700 border hover:bg-indigo-50">
-              📊 통계/개근
-            </Link>
-          </div>
-          <div className="flex bg-white rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => setActiveTab('attendance')}
-              className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'attendance' ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              예배/출석
-            </button>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'admin' ? 'bg-indigo-600 text-white font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              반/명단 관리
-            </button>
-          </div>
-        </header>
+      {/* Header Section - Full Width Dark Background */}
+      <div className="bg-slate-900 text-white py-12 mb-8 shadow-md">
+        <div className="max-w-5xl mx-auto px-4">
+          <header>
+            <div className="flex flex-col items-center justify-center text-center space-y-4 mb-8">
+              <div className="inline-block bg-indigo-600 text-xs font-bold px-3 py-1 rounded-full tracking-wider shadow-sm">
+                2026 CHURCH MOTTO
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight drop-shadow-sm">
+                오직 성령의 능력으로 <span className="text-lg font-normal opacity-80 block md:inline mt-1 md:mt-0">(고전 2:4-5)</span>
+              </h2>
+              <p className="text-slate-300 font-medium">백양로교회 다음세대 예배 출석 시스템</p>
+            </div>
 
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-2 flex justify-between items-center shadow-lg border border-white/10 max-w-3xl mx-auto">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setActiveTab('attendance')}
+                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === 'attendance'
+                      ? 'bg-white text-slate-900 shadow-md transform scale-100'
+                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                >
+                  예배 및 출석
+                </button>
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === 'admin'
+                      ? 'bg-white text-slate-900 shadow-md transform scale-100'
+                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                >
+                  관리 (반/명단)
+                </button>
+              </div>
+
+              <div className="hidden md:flex gap-2">
+                <Link href="/history" className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/20 transition-colors">
+                  <span>📅</span> 기록 보기
+                </Link>
+                <Link href="/stats" className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/20 transition-colors">
+                  <span>📊</span> 통계 확인
+                </Link>
+              </div>
+            </div>
+            {/* Mobile Links */}
+            <div className="flex justify-center gap-4 mt-4 md:hidden">
+              <Link href="/history" className="text-sm font-bold text-slate-200 hover:text-white underline underline-offset-4">
+                📅 기록 보기
+              </Link>
+              <Link href="/stats" className="text-sm font-bold text-slate-200 hover:text-white underline underline-offset-4">
+                📊 통계 확인
+              </Link>
+            </div>
+          </header>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 pb-12">
         {activeTab === 'admin' ? (
           <div className="space-y-8 animate-fade-in">
             <ClassManager />
             <RosterManager />
           </div>
         ) : (
-          <div className="animate-fade-in">
-            <WorshipInfoForm
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              logData={logData}
-              onUpdate={() => fetchLogByDate(selectedDate)}
-            />
+          <div className="animate-fade-in space-y-6">
 
-            {/* Attendance Section */}
-            <div className="bg-white p-4 rounded-lg shadow mb-6">
-              <h2 className="text-xl font-bold mb-4">2. 학생 출석 관리</h2>
+            {/* 1. Worship Info */}
+            <section>
+              <WorshipInfoForm
+                selectedDate={selectedDate}
+                onDateChange={setSelectedDate}
+                logData={logData}
+                onUpdate={() => fetchLogByDate(selectedDate)}
+              />
+            </section>
 
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">중등부</h3>
-                <div className="space-y-2">
+            {/* 2. Authentication Check */}
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-xl font-extrabold mb-6 flex items-center gap-2 text-slate-900">
+                <span className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-lg">2</span>
+                학생 출석 관리
+              </h2>
+
+              <div className="mb-8">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-blue-500 rounded-full inline-block"></span>
+                  중등부
+                </h3>
+                <div className="grid gap-3">
                   {middleClasses.map(cls => (
                     <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} />
                   ))}
-                  {middleClasses.length === 0 && <p className="text-gray-400">등록된 반이 없습니다. '반/명단 관리' 탭에서 반을 추가해주세요.</p>}
+                  {middleClasses.length === 0 && <p className="text-gray-500 py-4 text-center bg-slate-50 rounded-xl">중등부 반이 없습니다. 관리 배너에서 추가해주세요.</p>}
                 </div>
               </div>
 
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">고등부</h3>
-                <div className="space-y-2">
+              <div className="mb-8">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-indigo-500 rounded-full inline-block"></span>
+                  고등부
+                </h3>
+                <div className="grid gap-3">
                   {highClasses.map(cls => (
                     <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} />
                   ))}
-                  {highClasses.length === 0 && <p className="text-gray-400">등록된 반이 없습니다.</p>}
+                  {highClasses.length === 0 && <p className="text-gray-500 py-4 text-center bg-slate-50 rounded-xl">고등부 반이 없습니다.</p>}
                 </div>
               </div>
 
               {/* Special Groups */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-3">새친구 & 기타</h3>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 mb-4 px-1 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-green-500 rounded-full inline-block"></span>
+                  새친구 (New Friends)
+                </h3>
                 <div className="space-y-2">
-                  {/* We need to ensure these classes exist. For MVP, we pass special flags or ID lookups if we knew them. 
-                       But simpler is to look them up by Name in the classes array or Create them if missing?
-                       Better: Filter classes with grade='Special' or handle in UI. 
-                       User asked for 'New Friends' and 'Han Gwa Young' specifically. 
-                   */}
-                  {classes.filter(c => c.name === '새친구').map(cls => (
-                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr="🌱 새친구" allowAddStudent={true} />
-                  ))}
-                  {classes.filter(c => c.name === '한과영').map(cls => (
-                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr="🏫 한과영" allowAddStudent={true} />
-                  ))}
-
-                  {/* Helper: If they don't exist, maybe show a button to create them? Or we assume user created them via Admin.
-                       Let's Add a helper note if they are missing.
-                   */}
-                  {classes.filter(c => c.name === '새친구' || c.name === '한과영').length === 0 && (
-                    <div className="text-sm text-red-500">
-                      * '새친구'와 '한과영' 반을 [반/명단 관리] 탭에서 생성해주세요. (이름 정확히 '새친구', '한과영')
-                    </div>
-                  )}
+                  <AttendanceCheck
+                    logId={logData?.id || null}
+                    classNameStr="🌱 새친구 (태그 모음)"
+                    filterTag="새친구"
+                    allowAddStudent={true}
+                  />
+                  <p className="text-xs text-slate-600 mt-2 pl-2">
+                    * '새친구' 태그가 붙은 모든 학생이 이곳에 표시됩니다.
+                  </p>
                 </div>
+              </div>
+            </section>
+
+            {/* Online Attendance */}
+            <section>
+              <OnlineAttendanceForm
+                logId={logData?.id || null}
+                selectedDate={selectedDate}
+                onUpdate={() => fetchLogByDate(selectedDate)}
+              />
+            </section>
+
+            {/* Offerings and Staff - Stacked Vertically */}
+            <div className="flex flex-col gap-6">
+              <div>
+                <OfferingsForm logId={logData?.id || null} />
+              </div>
+              <div className="space-y-6">
+                <StaffCheck logId={logData?.id || null} />
+                <CouponForm
+                  selectedDate={selectedDate}
+                  logData={logData}
+                  onUpdate={() => fetchLogByDate(selectedDate)}
+                />
               </div>
             </div>
 
-            <OfferingsForm logId={logData?.id || null} />
-            <StaffCheck logId={logData?.id || null} />
-            <CouponForm
-              selectedDate={selectedDate}
-              logData={logData}
-              onUpdate={() => fetchLogByDate(selectedDate)}
-            />
-
-            {/* Image Download */}
-            <div className="mt-8 mb-8">
+            {/* Image Download Float or Bottom */}
+            <div className="py-12 flex justify-center">
               <PaperFormDownload logId={logData?.id || null} />
             </div>
           </div>

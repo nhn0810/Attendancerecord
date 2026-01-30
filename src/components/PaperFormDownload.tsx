@@ -17,7 +17,6 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
     const [logData, setLogData] = useState<WorshipLog | null>(null);
     const [classes, setClasses] = useState<Class[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
-    // Updated Attendance type local usage
     const [attendance, setAttendance] = useState<{ log_id: string, student_id: string, status: 'present' | 'online' }[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [teacherAttendance, setTeacherAttendance] = useState<{ log_id: string, teacher_id: string }[]>([]);
@@ -50,7 +49,6 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
             setLogData(logRes.data);
             setClasses(classRes.data || []);
             setStudents(studentRes.data || []);
-            // Cast or ensure type
             setAttendance((attRes.data as any) || []);
             setTeachers(teacherRes.data || []);
             setTeacherAttendance(tAttRes.data || []);
@@ -90,27 +88,17 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
     };
 
     // --- Helpers ---
-    const getAttendingStudents = (classId: string) => {
-        const classStudents = students.filter(s => s.class_id === classId);
+    const getAttendingStudents = (classId: string, studentList?: Student[]) => {
+        const targetStudents = studentList || students.filter(s => s.class_id === classId);
+        // Offline presence check
+        const attending = attendance.filter(a => targetStudents.some(s => s.id === a.student_id) && a.status === 'present');
 
-        // Filter attendance for this class
-        const classAtt = attendance.filter(a => classStudents.some(s => s.id === a.student_id));
-
-        const offlineCount = classAtt.filter(a => a.status === 'present').length;
-        const onlineCount = classAtt.filter(a => a.status === 'online').length;
-
-        // List names of ALL attendees (Offline + Online)
-        // Order by student name?
-        const attendingStudentIds = new Set(classAtt.map(a => a.student_id));
-        const attendingNames = classStudents
-            .filter(s => attendingStudentIds.has(s.id))
-            .map(s => s.name); // Maybe append (온) for online? User said "Just write names".
+        const names = targetStudents.filter(s => attendance.some(a => a.student_id === s.id && a.status === 'present')).map(s => s.name);
 
         return {
-            total: classStudents.length,
-            offline: offlineCount,
-            online: onlineCount,
-            names: attendingNames
+            total: targetStudents.length,
+            present: attending.length,
+            names: names
         };
     };
 
@@ -119,35 +107,36 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
 
     // Subtotals
     const getSubtotal = (clsList: Class[]) => {
-        let reg = 0; let off = 0; let on = 0;
+        let reg = 0; let pres = 0;
         clsList.forEach(c => {
             const stats = getAttendingStudents(c.id);
             reg += stats.total;
-            off += stats.offline;
-            on += stats.online;
+            pres += stats.present;
         });
-        return { reg, off, on };
+        return { reg, pres };
     };
 
     const midSub = getSubtotal(middleClasses);
     const highSub = getSubtotal(highClasses);
 
-    // Special
-    const newFriendsClasses = classes.filter(c => c.name === '새친구');
-    const newFriendStats = getSubtotal(newFriendsClasses);
-    const hgyClasses = classes.filter(c => c.name === '한과영');
-    const hgyStats = getSubtotal(hgyClasses);
+    // New Friends Logic (Tag based)
+    const newFriendStudents = students.filter(s => s.tags?.includes('새친구'));
+    const newFriendStats = getAttendingStudents('', newFriendStudents);
 
-    // Grand Total
-    const totalReg = midSub.reg + highSub.reg + newFriendStats.reg + hgyStats.reg;
-    const totalOff = midSub.off + highSub.off + newFriendStats.off + hgyStats.off;
-    const totalOn = midSub.on + highSub.on + newFriendStats.on + hgyStats.on;
+    // Custom Tag HGY
+    const hgyStudents = students.filter(s => s.tags?.includes('한과영'));
+    // Need to format HGY names with style : Bold Italic Brown
+    // We will render them normally in the list but apply style inline
+
+    // Grand Total (Unique)
+    const totalReg = students.length;
+    const totalPres = attendance.filter(a => a.status === 'present').length;
+    const onlineCount = logData?.online_attendance_count || 0;
 
     // Offerings
     const getOffering = (type: string) => offerings.find(o => o.type === type)?.amount || null;
-    const offeringTypes = ['주일헌금', '십일조', '감사헌금'];
     const totalOffering = offerings.reduce((sum, o) => sum + (o.amount || 0), 0);
-    const otherOfferings = offerings.filter(o => !offeringTypes.includes(o.type)).reduce((sum, o) => sum + (o.amount || 0), 0);
+    const otherOfferings = offerings.filter(o => !['주일헌금', '십일조', '감사헌금'].includes(o.type)).reduce((sum, o) => sum + (o.amount || 0), 0);
     const otherOfferingVal = otherOfferings > 0 ? otherOfferings : null;
 
     // Teachers
@@ -155,19 +144,37 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
     const teacherStaff = attendingTeachers.filter(t => t.role === 'Teacher');
     const staffStaff = attendingTeachers.filter(t => t.role === 'Staff');
 
-    // CSS Styles (Injected)
     const styles = `
-        .container { width: 794px; min-height: 1123px; margin: 0 auto; border: 2px solid #000; padding: 20px; font-family: "Malgun Gothic", sans-serif; color: #333; background: white; box-sizing: border-box; }
+        .container { width: 794px; min-height: 1123px; margin: 0 auto; border: 2px solid #000; padding: 20px; font-family: "Malgun Gothic", sans-serif; color: #000; background: white; box-sizing: border-box; }
         h1 { text-align: center; font-size: 24px; border: 1px solid #000; display: inline-block; padding: 5px 20px; margin: 0 auto 10px auto; }
         .header-box { text-align: center; margin-bottom: 10px; }
         .date { text-align: right; font-size: 14px; margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: center; color: #000; }
         th { background-color: #f2f2f2; }
         .section-title { font-weight: bold; margin-bottom: 5px; display: block; }
         .total-row { background-color: #f9f9f9; font-weight: bold; }
         .input-line { border-bottom: 1px solid #000; display: inline-block; min-width: 40px; text-align: center; padding: 0 5px; }
+        .nf-tag { color: #15803d; font-weight: bold; } 
     `;
+
+    // Helper to render student name with conditional styling
+    const renderStudentName = (name: string, studentId?: string) => {
+        // Find student object to check tags if id provided, otherwise guess or standard
+        // In the map loop we have the name. But 'names' array in stats is just strings.
+        // We should pass student objects to be accurate.
+        // Updating getAttendingStudents to return objects is better.
+        // BUT for now, let's look up by name (risk of duplicate names but user system seems small).
+        // Safest is to find student by name in the filtered list.
+        const student = students.find(s => s.name === name); // Fallback
+        const isHgy = student?.tags?.includes('한과영');
+
+        if (isHgy) {
+            // Bold Italic Brown
+            return <span key={name} style={{ fontWeight: 'bold', fontStyle: 'italic', color: '#8B4513', marginRight: '5px' }}>{name}</span>;
+        }
+        return <span key={name} style={{ marginRight: '5px' }}>{name}</span>;
+    };
 
     return (
         <div>
@@ -230,10 +237,10 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                                 <td>{c.name.replace('중등부', '중').replace('고등부', '고')}</td>
                                                 <td>{c.teacher_name || c.teachers?.name}</td>
                                                 <td>{stats.total}</td>
-                                                <td>{stats.offline}</td>
-                                                <td>{stats.online}</td>
+                                                <td>{stats.present}</td>
+                                                <td>-</td>
                                                 <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                                                    {stats.names.join(', ')}
+                                                    {stats.names.map(name => renderStudentName(name))}
                                                 </td>
                                             </tr>
                                         );
@@ -241,8 +248,8 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr className="total-row">
                                         <td colSpan={2}>소계</td>
                                         <td>{midSub.reg}</td>
-                                        <td>{midSub.off}</td>
-                                        <td>{midSub.on}</td>
+                                        <td>{midSub.pres}</td>
+                                        <td>-</td>
                                         <td></td>
                                     </tr>
 
@@ -254,10 +261,10 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                                 <td>{c.name.replace('중등부', '중').replace('고등부', '고')}</td>
                                                 <td>{c.teacher_name || c.teachers?.name}</td>
                                                 <td>{stats.total}</td>
-                                                <td>{stats.offline}</td>
-                                                <td>{stats.online}</td>
+                                                <td>{stats.present}</td>
+                                                <td>-</td>
                                                 <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                                                    {stats.names.join(', ')}
+                                                    {stats.names.map(name => renderStudentName(name))}
                                                 </td>
                                             </tr>
                                         );
@@ -265,36 +272,42 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                     <tr className="total-row">
                                         <td colSpan={2}>소계</td>
                                         <td>{highSub.reg}</td>
-                                        <td>{highSub.off}</td>
-                                        <td>{highSub.on}</td>
+                                        <td>{highSub.pres}</td>
+                                        <td>-</td>
                                         <td></td>
                                     </tr>
 
-                                    {/* Special */}
-                                    <tr>
-                                        <td colSpan={2}>새친구</td>
-                                        <td>{newFriendStats.reg}</td>
-                                        <td>{newFriendStats.off}</td>
-                                        <td>{newFriendStats.on}</td>
-                                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                                            {newFriendsClasses.map(c => getAttendingStudents(c.id).names.join(', ')).join(', ')}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td colSpan={2}>한과영</td>
-                                        <td>{hgyStats.reg}</td>
-                                        <td>{hgyStats.off}</td>
-                                        <td>{hgyStats.on}</td>
-                                        <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
-                                            {hgyClasses.map(c => getAttendingStudents(c.id).names.join(', ')).join(', ')}
-                                        </td>
-                                    </tr>
+                                    {/* New Friends Row - Removing Green Background as requested, keeping text distinct but background white */}
+                                    {newFriendStats.total > 0 && (
+                                        <tr>
+                                            <td colSpan={2} style={{ color: '#15803d', fontWeight: 'bold' }}>새친구</td>
+                                            <td>{newFriendStats.total}</td>
+                                            <td>{newFriendStats.present}</td>
+                                            <td>-</td>
+                                            <td style={{ textAlign: 'left', paddingLeft: '10px' }}>
+                                                {newFriendStats.names.map(name => (
+                                                    <span key={name} className="nf-tag" style={{ marginRight: '5px' }}>{name}</span>
+                                                ))}
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {/* Online Attendance Row */}
+                                    {onlineCount > 0 && (
+                                        <tr style={{ backgroundColor: '#eff6ff' }}>
+                                            <td colSpan={2} style={{ color: '#1d4ed8', fontWeight: 'bold' }}>온라인</td>
+                                            <td>-</td>
+                                            <td>-</td>
+                                            <td style={{ fontWeight: 'bold' }}>{onlineCount}</td>
+                                            <td style={{ fontSize: '11px', color: '#888' }}>(명단 생략)</td>
+                                        </tr>
+                                    )}
 
                                     <tr className="total-row" style={{ backgroundColor: '#eee' }}>
                                         <td colSpan={2}>합계</td>
                                         <td>{totalReg}</td>
-                                        <td>{totalOff}</td>
-                                        <td>{totalOn}</td>
+                                        <td>{totalPres}</td>
+                                        <td>{onlineCount}</td>
                                         <td></td>
                                     </tr>
                                 </tbody>
@@ -318,14 +331,6 @@ export default function PaperFormDownload({ logId }: PaperFormProps) {
                                         <td>{getOffering('감사헌금')?.toLocaleString()}</td>
                                         <td>{otherOfferingVal?.toLocaleString()}</td>
                                         <td>{totalOffering.toLocaleString()}</td>
-                                    </tr>
-                                    <tr style={{ height: '45px' }}>
-                                        <th>명단</th>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
-                                        <td></td>
                                     </tr>
                                 </tbody>
                             </table>

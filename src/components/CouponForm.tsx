@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,32 +11,39 @@ interface CouponFormProps {
 }
 
 export default function CouponForm({ selectedDate, logData, onUpdate }: CouponFormProps) {
-    const [recipientCount, setRecipientCount] = useState(0);
-    const [perPerson, setPerPerson] = useState(0);
+    // Use string for input to handle leading zeros better while typing
+    const [recipientCountStr, setRecipientCountStr] = useState('0');
+    // Enforce 3 coupons per person
+    const [perPerson] = useState(3);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (logData) {
-            setRecipientCount(logData.coupon_recipient_count || 0);
-            setPerPerson(logData.coupons_per_person || 0);
+            setRecipientCountStr(String(logData.coupon_recipient_count || 0));
         } else {
-            setRecipientCount(0);
-            setPerPerson(0);
+            setRecipientCountStr('0');
         }
     }, [logData]);
+
+    const handleRecipientChange = (val: string) => {
+        // Remove non-digits
+        const numVal = val.replace(/\D/g, '');
+        // Remove leading zeros unless it is just "0"
+        const cleanVal = numVal.replace(/^0+(?=\d)/, '') || '0';
+        setRecipientCountStr(cleanVal);
+    };
 
     const handleSave = async () => {
         setLoading(true);
         try {
             const payload = {
-                coupon_recipient_count: recipientCount,
-                coupons_per_person: perPerson
+                coupon_recipient_count: Number(recipientCountStr),
+                coupons_per_person: perPerson // Always 3
             };
 
             if (logData?.id) {
                 await supabase.from('worship_logs').update(payload).eq('id', logData.id);
             } else {
-                // Create log if not exists (though usually WorshipInfo creates it first)
                 await supabase.from('worship_logs').insert([{ date: selectedDate, ...payload }]);
             }
             onUpdate();
@@ -50,7 +56,7 @@ export default function CouponForm({ selectedDate, logData, onUpdate }: CouponFo
         }
     };
 
-    const totalAmount = recipientCount * perPerson * 1000;
+    const totalAmount = Number(recipientCountStr) * perPerson * 1000;
 
     return (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -59,11 +65,12 @@ export default function CouponForm({ selectedDate, logData, onUpdate }: CouponFo
                 <div className="flex items-center">
                     <label className="text-gray-700 font-bold mr-2">수령 인원:</label>
                     <input
-                        type="number"
-                        min="0"
-                        value={recipientCount}
-                        onChange={(e) => setRecipientCount(Number(e.target.value))}
-                        className="border p-2 w-24 rounded text-right text-black"
+                        type="text"
+                        inputMode="numeric"
+                        value={recipientCountStr}
+                        onClick={(e) => e.currentTarget.select()}
+                        onChange={(e) => handleRecipientChange(e.target.value)}
+                        className="border p-2 w-24 rounded text-right text-black text-lg font-medium"
                     />
                     <span className="ml-2 text-black">명</span>
                 </div>
@@ -72,12 +79,12 @@ export default function CouponForm({ selectedDate, logData, onUpdate }: CouponFo
                     <label className="text-gray-700 font-bold mr-2">1인당 지급:</label>
                     <input
                         type="number"
-                        min="0"
                         value={perPerson}
-                        onChange={(e) => setPerPerson(Number(e.target.value))}
-                        className="border p-2 w-24 rounded text-right text-black"
+                        readOnly
+                        disabled
+                        className="border p-2 w-24 rounded text-right bg-gray-200 text-gray-500 cursor-not-allowed font-medium"
                     />
-                    <span className="ml-2 text-black">장</span>
+                    <span className="ml-2 text-black">장 (고정)</span>
                 </div>
 
                 <div className="ml-auto flex items-center gap-4">
@@ -87,7 +94,7 @@ export default function CouponForm({ selectedDate, logData, onUpdate }: CouponFo
                     <button
                         onClick={handleSave}
                         disabled={loading}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50 text-sm font-bold shadow"
                     >
                         저장
                     </button>

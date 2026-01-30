@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -171,7 +170,7 @@ export default function WorshipInfoForm({ selectedDate, onDateChange, logData, o
                     <SmartInput
                         value={preacher}
                         onChange={setPreacher}
-                        options={['임희준 목사님', '김현민 전도사님']} // Default list logic
+                        options={['임희준 목사님']}
                         placeholder="직접 입력 또는 선택"
                         className="w-full"
                     />
