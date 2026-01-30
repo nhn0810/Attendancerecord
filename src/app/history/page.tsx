@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -43,7 +42,44 @@ export default function HistoryPage() {
                     <p>Loading...</p>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        {/* Mobile View: Cards */}
+                        <div className="md:hidden space-y-4">
+                            {logs.map(log => (
+                                <div key={log.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <div className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                                {log.date}
+                                            </div>
+                                            <div className="mt-1">
+                                                <p className="text-gray-900 font-medium">{log.sermon_title || '(제목 없음)'}</p>
+                                                <p className="text-sm text-gray-500">{log.preacher || '-'}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => deleteLog(log.id)}
+                                            className="text-red-500 bg-red-50 p-2 rounded-lg hover:bg-red-100 transition-colors"
+                                            title="삭제"
+                                        >
+                                            <span className="text-xs font-bold">삭제</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                                        <span className="text-sm text-gray-500">쿠폰 지급액</span>
+                                        <span className="font-bold text-indigo-600 text-lg">
+                                            {((log.coupon_recipient_count || 0) * (log.coupons_per_person || 0) * 1000).toLocaleString()}원
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            {logs.length === 0 && (
+                                <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-lg">기록이 없습니다.</div>
+                            )}
+                        </div>
+
+                        {/* Desktop View: Table */}
+                        <table className="hidden md:table w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 border-b-2 border-gray-200">
                                     <th className="p-4 font-bold text-gray-700">날짜</th>
@@ -63,7 +99,6 @@ export default function HistoryPage() {
                                             {((log.coupon_recipient_count || 0) * (log.coupons_per_person || 0) * 1000).toLocaleString()}원
                                         </td>
                                         <td className="p-4 text-right space-x-2">
-                                            {/* In a real app, Edit would link to Home with ?date=... params or similar */}
                                             <button
                                                 onClick={() => deleteLog(log.id)}
                                                 className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 px-3 py-1 rounded"

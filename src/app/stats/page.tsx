@@ -87,7 +87,7 @@ export default function StatsPage() {
                     className: clsName,
                     grade: clsGrade,
                     classId: clsId,
-                    fullClassName: clsName, // Changed: Removed forced prefix since color coding is used
+                    fullClassName: clsName,
                     present,
                     rate: rate.toFixed(1),
                     isPerfect: present === serviceCount
@@ -264,13 +264,55 @@ export default function StatsPage() {
                     </div>
                 </div>
 
-                {/* Table */}
+                {/* Table / Cards */}
                 {loading ? (
                     <div className="text-center py-10 text-gray-500">계산 중... (Calculating)</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <p className="text-sm text-gray-500 mb-2 italic">* 학생 이름을 클릭하면 세부 출석 내용을 수정할 수 있습니다.</p>
-                        <table className="w-full text-left border-collapse">
+
+                        {/* Mobile View: Cards */}
+                        <div className="md:hidden space-y-3">
+                            {stats.length === 0 && (
+                                <div className="p-8 text-center text-gray-500 bg-white rounded-lg border">
+                                    해당 기간/조건의 데이터가 없습니다.
+                                </div>
+                            )}
+                            {stats.map(row => (
+                                <div
+                                    key={row.id}
+                                    className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 active:bg-gray-50 transition-colors cursor-pointer"
+                                    onClick={() => openStudentDetail(row.id, row.name)}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <StudentNameDisplay student={row} className="font-bold text-lg text-gray-900" />
+                                            <span className={`px-2 py-0.5 rounded text-xs border font-medium ${row.grade === 'Middle' ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                                                {row.fullClassName}
+                                            </span>
+                                        </div>
+                                        {row.isPerfect && totalServices > 0 && (
+                                            <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold border border-yellow-400">
+                                                🏆 개근
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">출석률 ({row.present}/{totalServices})</span>
+                                            <span className="font-bold text-indigo-700">{row.rate}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 rounded-full h-2">
+                                            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${row.rate}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop View: Table */}
+                        <table className="hidden md:table w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-indigo-50 border-b-2 border-indigo-200">
                                     <th className="p-3 font-bold text-gray-700 whitespace-nowrap">이름</th>

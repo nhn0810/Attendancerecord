@@ -88,7 +88,60 @@ export default function OfferingsForm({ logId }: OfferingsFormProps) {
     return (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
             <h2 className="text-xl font-bold mb-4 text-black">3. 헌금 기록</h2>
-            <div className="overflow-x-auto">
+
+            {/* Mobile View: Stacked Forms */}
+            <div className="md:hidden space-y-6">
+                {OFFERING_TYPES.map(type => {
+                    const item = getOffering(type);
+                    return (
+                        <div key={type} className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <label className="block font-bold text-gray-900 mb-3 text-lg">{type}</label>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">금액</label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={item.amount ? item.amount.toLocaleString() : ''}
+                                        onChange={e => handleUpdate(type, 'amount', e.target.value)}
+                                        className="border rounded-lg p-3 w-full text-right text-black text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                                        placeholder="0"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">명단 / 메모</label>
+                                    {type === '주일헌금' ? (
+                                        <input
+                                            type="text"
+                                            disabled
+                                            className="border rounded-lg p-3 w-full bg-gray-100 text-gray-400 cursor-not-allowed"
+                                            value="-"
+                                            title="주일헌금은 명단을 입력하지 않습니다."
+                                        />
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={item.memo || ''}
+                                            onChange={e => handleUpdate(type, 'memo', e.target.value)}
+                                            className="border rounded-lg p-3 w-full text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            placeholder="이름 입력 (쉼표로 구분)"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
+                    <span className="font-bold text-gray-900">총 합계</span>
+                    <span className="font-bold text-indigo-700 text-xl">{totalAmount.toLocaleString()} 원</span>
+                </div>
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[600px] text-sm text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
