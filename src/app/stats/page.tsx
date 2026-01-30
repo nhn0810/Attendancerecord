@@ -193,26 +193,26 @@ export default function StatsPage() {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-gray-50 p-4 rounded mb-6 border">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="bg-gray-50 p-3 md:p-4 rounded-lg mb-6 border">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 items-end">
                         {/* Date Range */}
-                        <div className="col-span-2 flex gap-2">
-                            <div className="flex-1">
+                        <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-2">
+                            <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">시작일</label>
                                 <input
                                     type="date"
                                     value={startDate}
                                     onChange={e => setStartDate(e.target.value)}
-                                    className="border p-2 rounded text-black w-full"
+                                    className="border p-2 rounded-lg text-black w-full text-sm"
                                 />
                             </div>
-                            <div className="flex-1">
+                            <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">종료일</label>
                                 <input
                                     type="date"
                                     value={endDate}
                                     onChange={e => setEndDate(e.target.value)}
-                                    className="border p-2 rounded text-black w-full"
+                                    className="border p-2 rounded-lg text-black w-full text-sm"
                                 />
                             </div>
                         </div>
@@ -223,7 +223,7 @@ export default function StatsPage() {
                             <select
                                 value={selectedGrade}
                                 onChange={e => { setSelectedGrade(e.target.value as any); setSelectedClassId('All'); }}
-                                className="w-full border p-2 rounded text-black"
+                                className="w-full border p-2 rounded-lg text-black text-sm"
                             >
                                 <option value="All">전체</option>
                                 <option value="Middle">중등부</option>
@@ -237,7 +237,7 @@ export default function StatsPage() {
                             <select
                                 value={selectedClassId}
                                 onChange={e => setSelectedClassId(e.target.value)}
-                                className="w-full border p-2 rounded text-black"
+                                className="w-full border p-2 rounded-lg text-black text-sm"
                             >
                                 <option value="All">전체</option>
                                 {classes
