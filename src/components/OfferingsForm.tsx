@@ -20,60 +20,97 @@ export default function OfferingsForm({ logId }: OfferingsFormProps) {
 
     const loadOfferings = async () => {
         if (!logId) return;
-        const { data } = await supabase.from('offerings').select('*').eq('log_id', logId);
-        setOfferings(data || []);
-    };
+        const { data, error } = await supabase.from('offerings').select('*').eq('log_id', logId).order('id', { ascending: true });
 
-    const handleUpdate = async (type: string, field: 'amount' | 'memo', value: string) => {
-        if (!logId) {
-            alert('예배 정보를 먼저 저장해주세요.');
+        if (error || !data) {
+            setOfferings([]);
             return;
         }
 
-        // Find existing or create placeholder
-        const existing = offerings.find(o => o.type === type);
-        let currentAmount = existing?.amount || 0;
-        let currentMemo = existing?.memo || '';
+        // 중복 데이터 제거 (타이핑 시 다중 INSERT 버그로 인해 발생한 기존의 잉여 데이터 등 정리)
+        // 마지막에 입력된 데이터만 유지합니다.
+        const dedupedMap = new Map<string, Offering>();
+        const toDeleteIds: string[] = [];
 
-        // Update value
-        if (field === 'amount') {
-            // Remove commas and parse
-            const num = Number(value.replace(/,/g, ''));
-            if (isNaN(num)) return;
-            currentAmount = num;
-        } else {
-            currentMemo = value;
+        data.forEach(item => {
+            if (dedupedMap.has(item.type)) {
+                // 이전 레코드의 ID를 삭제 목록에 추가
+                toDeleteIds.push(dedupedMap.get(item.type)!.id);
+            }
+            dedupedMap.set(item.type, item);
+        });
+
+        if (toDeleteIds.length > 0) {
+            supabase.from('offerings').delete().in('id', toDeleteIds).then(() => console.log('Cleaned up duplicate offerings'));
         }
+
+        setOfferings(Array.from(dedupedMap.values()));
+    };
+
+    const handleLocalUpdate = (type: string, field: 'amount' | 'memo', value: string) => {
+        if (!logId) {
+            if (field === 'amount') alert('예배 정보를 먼저 저장해주세요.');
+            return;
+        }
+
+        setOfferings(prev => {
+            const next = [...prev];
+            const index = next.findIndex(o => o.type === type);
+            const existing = index >= 0 ? next[index] : { log_id: logId, type, amount: 0, memo: '', id: 'temp' } as Offering;
+
+            if (field === 'amount') {
+                if (value === '') {
+                    existing.amount = 0;
+                } else {
+                    const num = Number(value.replace(/,/g, ''));
+                    if (!isNaN(num)) existing.amount = num;
+                }
+            } else {
+                existing.memo = value;
+            }
+
+            if (index >= 0) {
+                next[index] = existing;
+            } else {
+                next.push(existing);
+            }
+            return next;
+        });
+    };
+
+    const handleSave = async (type: string) => {
+        if (!logId) return;
+
+        const existing = offerings.find(o => o.type === type);
+        if (!existing) return;
 
         const payload = {
             log_id: logId,
             type,
-            amount: currentAmount,
-            memo: currentMemo
+            amount: existing.amount || 0,
+            memo: existing.memo || ''
         };
 
-        // Optimistic Update
-        const newOfferings = [...offerings];
-        const index = newOfferings.findIndex(o => o.type === type);
-        if (index >= 0) {
-            newOfferings[index] = { ...newOfferings[index], ...payload } as Offering;
-        } else {
-            newOfferings.push({ ...payload, id: 'temp' } as Offering);
-        }
-        setOfferings(newOfferings);
-
-        // Server Update
         try {
-            if (existing?.id && existing.id !== 'temp') {
+            if (existing.id && existing.id !== 'temp') {
                 await supabase.from('offerings').update(payload).eq('id', existing.id);
             } else {
-                // Upsert logic simulation
-                const { data: found } = await supabase.from('offerings').select('id').eq('log_id', logId).eq('type', type).single();
+                // 혹시 저장하는 사이에 race condition으로 생긴 row가 있는지 확인
+                const { data: found } = await supabase.from('offerings').select('id').eq('log_id', logId).eq('type', type);
 
-                if (found) {
-                    await supabase.from('offerings').update(payload).eq('id', found.id);
+                if (found && found.length > 0) {
+                    await supabase.from('offerings').update(payload).eq('id', found[0].id);
+                    setOfferings(prev => prev.map(o => o.type === type ? { ...o, id: found[0].id } : o));
+
+                    if (found.length > 1) {
+                        const idsToDelete = found.slice(1).map(f => f.id);
+                        await supabase.from('offerings').delete().in('id', idsToDelete);
+                    }
                 } else {
-                    await supabase.from('offerings').insert([payload]);
+                    const { data: inserted } = await supabase.from('offerings').insert([payload]).select('id').single();
+                    if (inserted) {
+                        setOfferings(prev => prev.map(o => o.type === type ? { ...o, id: inserted.id } : o));
+                    }
                 }
             }
         } catch (e) {
@@ -104,7 +141,8 @@ export default function OfferingsForm({ logId }: OfferingsFormProps) {
                                         type="text"
                                         inputMode="numeric"
                                         value={item.amount ? item.amount.toLocaleString() : ''}
-                                        onChange={e => handleUpdate(type, 'amount', e.target.value)}
+                                        onChange={e => handleLocalUpdate(type, 'amount', e.target.value)}
+                                        onBlur={() => handleSave(type)}
                                         className="border rounded-lg p-3 w-full text-right text-black text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                                         placeholder="0"
                                     />
@@ -124,7 +162,8 @@ export default function OfferingsForm({ logId }: OfferingsFormProps) {
                                         <input
                                             type="text"
                                             value={item.memo || ''}
-                                            onChange={e => handleUpdate(type, 'memo', e.target.value)}
+                                            onChange={e => handleLocalUpdate(type, 'memo', e.target.value)}
+                                            onBlur={() => handleSave(type)}
                                             className="border rounded-lg p-3 w-full text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             placeholder="이름 입력 (쉼표로 구분)"
                                         />
@@ -161,7 +200,8 @@ export default function OfferingsForm({ logId }: OfferingsFormProps) {
                                             type="text"
                                             inputMode="numeric"
                                             value={item.amount ? item.amount.toLocaleString() : ''}
-                                            onChange={e => handleUpdate(type, 'amount', e.target.value)}
+                                            onChange={e => handleLocalUpdate(type, 'amount', e.target.value)}
+                                            onBlur={() => handleSave(type)}
                                             className="border rounded p-2 w-32 text-right text-black focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                                             placeholder="0"
                                         />
@@ -179,7 +219,8 @@ export default function OfferingsForm({ logId }: OfferingsFormProps) {
                                             <input
                                                 type="text"
                                                 value={item.memo || ''}
-                                                onChange={e => handleUpdate(type, 'memo', e.target.value)}
+                                                onChange={e => handleLocalUpdate(type, 'memo', e.target.value)}
+                                                onBlur={() => handleSave(type)}
                                                 className="border rounded p-2 w-full text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                 placeholder="이름 입력 (쉼표로 구분)"
                                             />
