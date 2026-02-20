@@ -5,8 +5,13 @@ import { supabase } from '@/utils/supabase/client';
 import { WorshipLog } from '@/types/database';
 import Link from 'next/link';
 
+interface EnhancedLog extends WorshipLog {
+    totalOffering?: number;
+    attendanceCount?: number;
+}
+
 export default function HistoryPage() {
-    const [logs, setLogs] = useState<WorshipLog[]>([]);
+    const [logs, setLogs] = useState<EnhancedLog[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -14,11 +19,48 @@ export default function HistoryPage() {
     }, []);
 
     const fetchLogs = async () => {
-        const { data } = await supabase
+        const { data: logsData } = await supabase
             .from('worship_logs')
             .select('*')
             .order('date', { ascending: false });
-        setLogs(data || []);
+
+        if (!logsData || logsData.length === 0) {
+            setLogs([]);
+            setLoading(false);
+            return;
+        }
+
+        const logIds = logsData.map(l => l.id);
+
+        // Fetch attendance
+        const { data: attendanceData } = await supabase
+            .from('attendance')
+            .select('log_id')
+            .in('log_id', logIds);
+
+        const attendanceCountMap: Record<string, number> = {};
+        attendanceData?.forEach(a => {
+            attendanceCountMap[a.log_id] = (attendanceCountMap[a.log_id] || 0) + 1;
+        });
+
+        // Fetch offerings
+        const { data: offeringData } = await supabase
+            .from('offerings')
+            .select('log_id, amount')
+            .in('log_id', logIds);
+
+        const offeringTotalMap: Record<string, number> = {};
+        offeringData?.forEach(o => {
+            offeringTotalMap[o.log_id] = (offeringTotalMap[o.log_id] || 0) + (o.amount || 0);
+        });
+
+        const enhancedLogs = logsData.map(log => ({
+            ...log,
+            totalOffering: offeringTotalMap[log.id] || 0,
+            attendanceCount: attendanceCountMap[log.id] || 0
+        }));
+
+        setLogs(enhancedLogs);
         setLoading(false);
     };
 
@@ -65,10 +107,12 @@ export default function HistoryPage() {
                                         </button>
                                     </div>
 
-                                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">쿠폰 지급액</span>
-                                        <span className="font-bold text-indigo-600 text-lg">
-                                            {((log.coupon_recipient_count || 0) * (log.coupons_per_person || 0) * 1000).toLocaleString()}원
+                                    <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-sm">
+                                        <span className="text-gray-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                            출석 <strong className="text-blue-700">{log.attendanceCount}명</strong>
+                                        </span>
+                                        <span className="text-gray-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                                            헌금 <strong className="text-indigo-700">{(log.totalOffering || 0).toLocaleString()}원</strong>
                                         </span>
                                     </div>
                                 </div>
@@ -85,7 +129,8 @@ export default function HistoryPage() {
                                     <th className="p-4 font-bold text-gray-700">날짜</th>
                                     <th className="p-4 font-bold text-gray-700">말씀 제목</th>
                                     <th className="p-4 font-bold text-gray-700">설교자</th>
-                                    <th className="p-4 font-bold text-gray-700">쿠폰 지급액</th>
+                                    <th className="p-4 font-bold text-gray-700 text-center">출석 인원</th>
+                                    <th className="p-4 font-bold text-gray-700 text-right">총 헌금액</th>
                                     <th className="p-4 font-bold text-gray-700 text-right">관리</th>
                                 </tr>
                             </thead>
@@ -95,8 +140,11 @@ export default function HistoryPage() {
                                         <td className="p-4 font-medium">{log.date}</td>
                                         <td className="p-4">{log.sermon_title || '-'}</td>
                                         <td className="p-4">{log.preacher || '-'}</td>
-                                        <td className="p-4 text-indigo-700 font-bold">
-                                            {((log.coupon_recipient_count || 0) * (log.coupons_per_person || 0) * 1000).toLocaleString()}원
+                                        <td className="p-4 text-center font-bold text-blue-600 bg-blue-50/30">
+                                            {log.attendanceCount}명
+                                        </td>
+                                        <td className="p-4 text-right text-indigo-700 font-bold bg-indigo-50/30">
+                                            {(log.totalOffering || 0).toLocaleString()}원
                                         </td>
                                         <td className="p-4 text-right space-x-2">
                                             <button
@@ -110,7 +158,7 @@ export default function HistoryPage() {
                                 ))}
                                 {logs.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-gray-500">기록이 없습니다.</td>
+                                        <td colSpan={6} className="p-8 text-center text-gray-500">기록이 없습니다.</td>
                                     </tr>
                                 )}
                             </tbody>
