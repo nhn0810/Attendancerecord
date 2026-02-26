@@ -15,11 +15,13 @@ import RosterManager from '@/components/RosterManager';
 import PaperFormDownload from '@/components/PaperFormDownload';
 import OnlineAttendanceForm from '@/components/OnlineAttendanceForm';
 import AppInstallBanner from '@/components/AppInstallBanner';
+import ManualModal from '@/components/ManualModal';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'attendance' | 'admin'>('attendance');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [logData, setLogData] = useState<WorshipLog | null>(null);
+  const [isManualOpen, setIsManualOpen] = useState(false);
 
   // Dynamic Classes
   const [classes, setClasses] = useState<Class[]>([]);
@@ -50,8 +52,19 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 font-sans text-gray-900">
 
       {/* Header Section - Full Width Dark Background */}
-      <div className="bg-slate-900 text-white py-12 mb-8 shadow-md">
+      <div className="bg-slate-900 text-white py-12 mb-8 shadow-md relative">
         <div className="max-w-5xl mx-auto px-4">
+
+          {/* Manual Button (Top Right Absolute within Max-W / Container) */}
+          <div className="absolute top-4 right-4 md:right-8 z-10">
+            <button
+              onClick={() => setIsManualOpen(true)}
+              className="text-xs md:text-sm text-gray-400 hover:text-white underline underline-offset-4 tracking-wide font-medium transition-colors"
+            >
+              어떻게 사용하나요?
+            </button>
+          </div>
+
           <header>
             <div className="flex flex-col items-center justify-center text-center space-y-4 mb-8">
               <div className="inline-block bg-indigo-600 text-xs font-bold px-3 py-1 rounded-full tracking-wider shadow-sm">
@@ -214,6 +227,9 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
     </main>
   );
 }

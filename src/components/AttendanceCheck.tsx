@@ -257,7 +257,7 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
     };
 
     const handleRemoveStudent = async (studentId: string) => {
-        if (!window.confirm('이 학생을 목록에서 제외하시겠습니까? (삭제된 이후의 출석 기록은 남지 않습니다)')) return;
+        if (!window.confirm('학생 데이터가 완전히 삭제되는 것 대신 미배정 학생으로 전환됩니다. 다시 추가하기 위해서는 반드시!! 미배정 학생에서 추가해주십시오.')) return;
 
         if (filterTag) {
             // Remove tag
@@ -296,9 +296,8 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
                     </button>
                     {isManageMode && <span className="text-xs text-orange-600 font-bold animate-pulse">관리 모드</span>}
                 </div>
-                <div className="text-sm text-gray-600">
-                    현장: <strong className="text-blue-600">{presentCount}</strong> /
-                    재적: {students.length}
+                <div className="text-sm text-gray-600 flex-shrink-0 text-right whitespace-nowrap">
+                    현장: <strong className="text-blue-600">{presentCount}</strong> / 재적: {students.length}
                 </div>
             </div>
 
