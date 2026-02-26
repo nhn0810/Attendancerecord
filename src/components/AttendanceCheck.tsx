@@ -235,7 +235,14 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
                 const currentTags = s?.tags || [];
                 if (currentTags.includes('새친구') || s?.first_visit_date) {
                     updates.tags = currentTags.filter((t: string) => t !== '새친구');
-                    updates.class_assigned_date = currentDate || new Date().toISOString().split('T')[0];
+                    // Use the calendar's currentDate to record WHEN they were assigned to this class!
+                    // If moving directly on a date that is null, fallback to local KST date string
+                    const getLocalDateString = () => {
+                        const d = new Date();
+                        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                        return d.toISOString().split('T')[0];
+                    };
+                    updates.class_assigned_date = currentDate || getLocalDateString();
                 }
 
                 const { error } = await supabase
