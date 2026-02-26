@@ -14,6 +14,8 @@ export interface Student {
     class_id: string | null; // Null if unassigned
     is_active: boolean;
     tags?: string[] | null;
+    first_visit_date?: string | null;
+    class_assigned_date?: string | null;
 }
 
 export interface Teacher {

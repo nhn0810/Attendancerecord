@@ -71,7 +71,7 @@ export default function StaffCheck({ logId }: StaffCheckProps) {
     };
 
     const deleteStaff = async (id: string, name: string) => {
-        if (!confirm(`'${name}' 님을 명단에서 삭제하시겠습니까?`)) return;
+        if (!confirm(`불필요한 데이터라면 삭제해도 좋지만, 이름을 삭제하면 출석기록도 함께 삭제되어 되돌릴 수 없습니다.\n정말 삭제하시겠습니까?`)) return;
         const { error } = await supabase.from('teachers').delete().eq('id', id);
         if (error) alert('삭제 실패: ' + error.message);
         else fetchTeachers();

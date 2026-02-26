@@ -13,9 +13,10 @@ interface AttendanceCheckProps {
     classNameStr: string;
     teacherName?: string;
     allowAddStudent?: boolean; // Now serves as a default 'show add' but we might allow manage mode universally
+    currentDate?: string;
 }
 
-export default function AttendanceCheck({ logId, classId, classNameStr, teacherName, allowAddStudent, filterTag }: AttendanceCheckProps) {
+export default function AttendanceCheck({ logId, classId, classNameStr, teacherName, allowAddStudent, filterTag, currentDate }: AttendanceCheckProps) {
     const [students, setStudents] = useState<Student[]>([]);
 
     // Tracking status: 'present' (Offline) | 'online' (Online) | undefined (Absent)
@@ -44,8 +45,12 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
                 .order('name');
 
             if (filterTag) {
-                // Filter by Tag using array containment operator
-                query = query.contains('tags', [filterTag]);
+                // Filter by Tag using array containment operator, or by new friend dates
+                if (filterTag === '새친구' && currentDate) {
+                    query = query.or(`tags.cs.{"새친구"},and(first_visit_date.lte.${currentDate},or(class_assigned_date.is.null,class_assigned_date.gt.${currentDate}))`);
+                } else {
+                    query = query.contains('tags', [filterTag]);
+                }
             } else if (classId) {
                 // Filter by Class
                 query = query.eq('class_id', classId);
@@ -59,7 +64,35 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
             const { data: studentData, error: studentError } = await query;
 
             if (studentError) throw studentError;
-            setStudents(studentData || []);
+
+            // Post-process students for date-based visibility
+            let filteredStudents = studentData || [];
+
+            if (currentDate) {
+                if (filterTag === '새친구') {
+                    // 새친구 표출 조건:
+                    // 1. 현재 선택한 날짜가 새친구 최초 방문일과 같거나 이후일 것. (과거 날짜의 달력에서는 미래의 새친구가 안보이게)
+                    // 2. 현재 선택한 날짜가 반 배정일보다 엄격하게 이전일 것. (or 반배정을 아직 안받았거나)
+                    filteredStudents = filteredStudents.filter(s => {
+                        const isAfterVisit = s.first_visit_date ? s.first_visit_date <= currentDate : true;
+                        const isBeforeAssigned = !s.class_assigned_date || currentDate < s.class_assigned_date;
+
+                        // 현재 태그가 '새친구'이더라도, 날짜 조건을 우선해야 과거/미래 달력 기믹이 성립함 
+                        return isAfterVisit && isBeforeAssigned;
+                    });
+                } else if (classId) {
+                    // 정규 반 학생 표출 조건:
+                    // 반 배정일(class_assigned_date)이 존재한다면, 그 날짜와 같거나 이후여야 함.
+                    // (배정일 이전 과거 달력에서는 반 명단에 노출되지 않아야 함!)
+                    // 배정일이 null이면 기존/레거시 데이터이므로 그냥 노출
+                    filteredStudents = filteredStudents.filter(s => {
+                        const isAfterAssigned = s.class_assigned_date ? s.class_assigned_date <= currentDate : true;
+                        return isAfterAssigned;
+                    });
+                }
+            }
+
+            setStudents(filteredStudents);
 
             // 2. Get Attendance
             if (logId) {
@@ -155,47 +188,69 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
 
     const handleAddStudent = async () => {
         if (addTab === 'create') {
-            if (!newStudentName.trim()) return;
+            const val = newStudentName.trim();
+            if (!val) return;
             const payload: any = {
-                name: newStudentName.trim(),
                 is_active: true
             };
 
             if (filterTag) {
                 payload.tags = [filterTag];
                 payload.class_id = null; // New friend has no class initially? or Unassigned
+                if (filterTag === '새친구' && currentDate) {
+                    payload.first_visit_date = currentDate;
+                }
             } else {
                 payload.class_id = classId;
             }
 
-            const { error } = await supabase.from('students').insert(payload);
-            if (error) alert('추가 실패: ' + error.message);
+            import('@/utils/studentUtils').then(m => {
+                m.addStudentWithVerification(val, payload, () => {
+                    setNewStudentName('');
+                    setIsAddModalOpen(false);
+                    fetchData();
+                });
+            });
         } else {
             // Select existing student
             if (!selectedUnassignedId) return;
 
             if (filterTag) {
                 // Add tag to existing student
-                // First get existing tags
                 const { data: s } = await supabase.from('students').select('tags').eq('id', selectedUnassignedId).single();
                 const currentTags = s?.tags || [];
-                if (!currentTags.includes(filterTag)) {
-                    await supabase.from('students').update({ tags: [...currentTags, filterTag] }).eq('id', selectedUnassignedId);
+                const updates: any = {
+                    tags: [...currentTags.filter((t: string) => t !== filterTag), filterTag]
+                };
+                if (filterTag === '새친구' && currentDate) {
+                    updates.first_visit_date = currentDate;
+                    updates.class_assigned_date = null;
                 }
+                await supabase.from('students').update(updates).eq('id', selectedUnassignedId);
             } else {
+                const updates: any = { class_id: classId };
+
+                // If they are currently a new friend, assigning them to a class should set class_assigned_date and remove "새친구" tag.
+                const { data: s } = await supabase.from('students').select('tags, first_visit_date').eq('id', selectedUnassignedId).single();
+                const currentTags = s?.tags || [];
+                if (currentTags.includes('새친구') || s?.first_visit_date) {
+                    updates.tags = currentTags.filter((t: string) => t !== '새친구');
+                    updates.class_assigned_date = currentDate || new Date().toISOString().split('T')[0];
+                }
+
                 const { error } = await supabase
                     .from('students')
-                    .update({ class_id: classId })
+                    .update(updates)
                     .eq('id', selectedUnassignedId);
                 if (error) alert('배정 실패: ' + error.message);
             }
+            setIsAddModalOpen(false);
+            fetchData();
         }
-        setIsAddModalOpen(false);
-        fetchData();
     };
 
     const handleRemoveStudent = async (studentId: string) => {
-        if (!confirm('이 학생을 목록에서 제외하시겠습니까?')) return;
+        if (!window.confirm('이 학생을 목록에서 제외하시겠습니까? (삭제된 이후의 출석 기록은 남지 않습니다)')) return;
 
         if (filterTag) {
             // Remove tag
@@ -262,7 +317,7 @@ export default function AttendanceCheck({ logId, classId, classNameStr, teacherN
                                         ${isManageMode ? 'opacity-70 cursor-default' : ''}
                                     `}
                                 >
-                                    <StudentNameDisplay student={student} />
+                                    <StudentNameDisplay student={student} forceGreen={filterTag === '새친구'} />
                                 </button>
                                 {isManageMode && (
                                     <button

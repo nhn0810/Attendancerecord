@@ -6,7 +6,11 @@ import { Class, Student } from '@/types/database';
 import { Trash2, Settings, ArrowLeft, Save, X, Plus } from 'lucide-react';
 import StudentNameDisplay from './StudentNameDisplay';
 
-export default function RosterManager() {
+interface RosterManagerProps {
+    currentDate?: string;
+}
+
+export default function RosterManager({ currentDate }: RosterManagerProps) {
     const [classes, setClasses] = useState<Class[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
@@ -45,15 +49,31 @@ export default function RosterManager() {
     const addStudent = async () => {
         const val = newStudentName.trim();
         if (!val) return;
-        await supabase.from('students').insert([{ name: val, class_id: null }]);
-        setNewStudentName('');
-        fetchData();
+
+        const payload = { class_id: null, is_active: true };
+        import('@/utils/studentUtils').then(m => {
+            m.addStudentWithVerification(val, payload, () => {
+                setNewStudentName('');
+                fetchData();
+            });
+        });
     };
 
     const moveStudent = async (studentId: string, targetClassId: string | null) => {
+        const updates: any = { class_id: targetClassId };
+
+        if (targetClassId) {
+            const { data: s } = await supabase.from('students').select('tags, first_visit_date').eq('id', studentId).single();
+            const currentTags = s?.tags || [];
+            if (currentTags.includes('새친구') || s?.first_visit_date) {
+                updates.tags = currentTags.filter((t: string) => t !== '새친구');
+                updates.class_assigned_date = currentDate || new Date().toISOString().split('T')[0];
+            }
+        }
+
         const { error } = await supabase
             .from('students')
-            .update({ class_id: targetClassId })
+            .update(updates)
             .eq('id', studentId);
 
         if (error) alert('이동 실패');
@@ -67,7 +87,7 @@ export default function RosterManager() {
     };
 
     const deleteStudent = async (studentId: string) => {
-        if (!confirm('정말 명단에서 삭제하시겠습니까? (복구 불가)')) return;
+        if (!confirm('불필요한 데이터라면 삭제해도 좋지만, 이름을 삭제하면 출석기록도 함께 삭제되어 되돌릴 수 없습니다.\n정말 삭제하시겠습니까?')) return;
         const { error } = await supabase.from('students').delete().eq('id', studentId);
 
         if (error) {
@@ -92,12 +112,23 @@ export default function RosterManager() {
         if (isNewFriend) newTags.push('새친구');
         if (isHanGwaYoung) newTags.push('한과영');
 
+        const updates: any = {
+            name: editName,
+            tags: newTags
+        };
+
+        const wasNewFriend = editingStudent.tags?.includes('새친구');
+        if (!wasNewFriend && isNewFriend) {
+            if (!confirm('새친구 태그를 부여하면 이전의 출석기록은 사라집니다.\n계속하시겠습니까?')) {
+                return;
+            }
+            updates.first_visit_date = currentDate || new Date().toISOString().split('T')[0];
+            updates.class_assigned_date = null;
+        }
+
         const { error } = await supabase
             .from('students')
-            .update({
-                name: editName,
-                tags: newTags
-            })
+            .update(updates)
             .eq('id', editingStudent.id);
 
         if (error) alert('수정 실패: ' + error.message);

@@ -14,6 +14,7 @@ import ClassManager from '@/components/ClassManager';
 import RosterManager from '@/components/RosterManager';
 import PaperFormDownload from '@/components/PaperFormDownload';
 import OnlineAttendanceForm from '@/components/OnlineAttendanceForm';
+import AppInstallBanner from '@/components/AppInstallBanner';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'attendance' | 'admin'>('attendance');
@@ -67,8 +68,8 @@ export default function Home() {
                 <button
                   onClick={() => setActiveTab('attendance')}
                   className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === 'attendance'
-                      ? 'bg-white text-slate-900 shadow-md transform scale-100'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white text-slate-900 shadow-md transform scale-100'
+                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
                     }`}
                 >
                   예배 및 출석
@@ -76,8 +77,8 @@ export default function Home() {
                 <button
                   onClick={() => setActiveTab('admin')}
                   className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${activeTab === 'admin'
-                      ? 'bg-white text-slate-900 shadow-md transform scale-100'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white text-slate-900 shadow-md transform scale-100'
+                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
                     }`}
                 >
                   관리 (반/명단)
@@ -110,10 +111,13 @@ export default function Home() {
         {activeTab === 'admin' ? (
           <div className="space-y-8 animate-fade-in">
             <ClassManager />
-            <RosterManager />
+            <RosterManager currentDate={selectedDate} />
           </div>
         ) : (
           <div className="animate-fade-in space-y-6">
+
+            {/* App Install Banner */}
+            <AppInstallBanner />
 
             {/* 1. Worship Info */}
             <section>
@@ -139,7 +143,7 @@ export default function Home() {
                 </h3>
                 <div className="grid gap-3">
                   {middleClasses.map(cls => (
-                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} />
+                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} currentDate={selectedDate} />
                   ))}
                   {middleClasses.length === 0 && <p className="text-gray-500 py-4 text-center bg-slate-50 rounded-xl">중등부 반이 없습니다. 관리 배너에서 추가해주세요.</p>}
                 </div>
@@ -152,7 +156,7 @@ export default function Home() {
                 </h3>
                 <div className="grid gap-3">
                   {highClasses.map(cls => (
-                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} />
+                    <AttendanceCheck key={cls.id} logId={logData?.id || null} classId={cls.id} classNameStr={cls.name} teacherName={cls.teacher_name || cls.teachers?.name} currentDate={selectedDate} />
                   ))}
                   {highClasses.length === 0 && <p className="text-gray-500 py-4 text-center bg-slate-50 rounded-xl">고등부 반이 없습니다.</p>}
                 </div>
@@ -170,6 +174,7 @@ export default function Home() {
                     classNameStr="🌱 새친구 (태그 모음)"
                     filterTag="새친구"
                     allowAddStudent={true}
+                    currentDate={selectedDate}
                   />
                   <p className="text-xs text-slate-600 mt-2 pl-2">
                     * '새친구' 태그가 붙은 모든 학생이 이곳에 표시됩니다.

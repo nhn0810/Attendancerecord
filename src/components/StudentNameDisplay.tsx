@@ -7,11 +7,12 @@ interface StudentNameDisplayProps {
         tags?: string[] | null;
     };
     className?: string; // Additional classes
+    forceGreen?: boolean;
 }
 
-export default function StudentNameDisplay({ student, className = '' }: StudentNameDisplayProps) {
+export default function StudentNameDisplay({ student, className = '', forceGreen = false }: StudentNameDisplayProps) {
     const tags = student.tags || [];
-    const isNewFriend = tags.includes('새친구');
+    const isNewFriend = tags.includes('새친구') || forceGreen;
     const isHanGwaYoung = tags.includes('한과영');
 
     if (isNewFriend) {
